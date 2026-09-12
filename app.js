@@ -5,49 +5,34 @@ let chart = null;
 let selected = null;
 let rendering = false;
 
-const fallbackUS = [
-  ["NVDA","NVIDIA","Semiconductors"],
-  ["AMD","AMD","Semiconductors"],
-  ["AVGO","Broadcom","Semiconductors"],
-  ["TSM","TSMC","Semiconductors"],
-  ["MU","Micron","Semiconductors"],
-  ["INTC","Intel","Semiconductors"],
-  ["AAPL","Apple","Technology Hardware"],
-  ["MSFT","Microsoft","Software"],
-  ["GOOGL","Alphabet","Internet"],
-  ["AMZN","Amazon","Internet"],
-  ["META","Meta","Internet"],
-  ["ORCL","Oracle","Software"],
-  ["CRM","Salesforce","Software"],
-  ["PLTR","Palantir","Software"],
-  ["NFLX","Netflix","Media"],
-  ["TSLA","Tesla","Automobiles"],
-  ["LLY","Eli Lilly","Pharmaceuticals"],
-  ["UNH","UnitedHealth","Healthcare"],
-  ["XOM","Exxon Mobil","Energy"],
-  ["CVX","Chevron","Energy"],
-  ["JPM","JPMorgan","Banks"],
-  ["BAC","Bank of America","Banks"],
-  ["V","Visa","Financial Services"],
-  ["MA","Mastercard","Financial Services"],
-  ["WMT","Walmart","Retail"],
-  ["COST","Costco","Retail"],
-  ["CAT","Caterpillar","Industrials"],
-  ["GE","GE Aerospace","Industrials"],
-  ["RTX","RTX","Aerospace & Defense"],
-  ["LIN","Linde","Chemicals"],
-  ["ADBE","Adobe","Software"],
-  ["IBM","IBM","IT Services"],
-  ["UBER","Uber","Transport"],
-  ["COIN","Coinbase","Financial Services"],
+/* =========================================================
+   FALLBACK UNIVERSE
+   ========================================================= */
+
+const usFallback = [
+  ["NVDA","NVIDIA","Semiconductors"],["AMD","AMD","Semiconductors"],
+  ["AVGO","Broadcom","Semiconductors"],["TSM","TSMC","Semiconductors"],
+  ["MU","Micron","Semiconductors"],["INTC","Intel","Semiconductors"],
+  ["AAPL","Apple","Technology Hardware"],["MSFT","Microsoft","Software"],
+  ["GOOGL","Alphabet","Internet"],["AMZN","Amazon","Internet"],
+  ["META","Meta","Internet"],["ORCL","Oracle","Software"],
+  ["CRM","Salesforce","Software"],["PLTR","Palantir","Software"],
+  ["NFLX","Netflix","Media"],["TSLA","Tesla","Automobiles"],
+  ["LLY","Eli Lilly","Pharmaceuticals"],["UNH","UnitedHealth","Healthcare"],
+  ["XOM","Exxon Mobil","Energy"],["CVX","Chevron","Energy"],
+  ["JPM","JPMorgan","Banks"],["BAC","Bank of America","Banks"],
+  ["V","Visa","Financial Services"],["MA","Mastercard","Financial Services"],
+  ["WMT","Walmart","Retail"],["COST","Costco","Retail"],
+  ["CAT","Caterpillar","Industrials"],["GE","GE Aerospace","Industrials"],
+  ["RTX","RTX","Aerospace & Defense"],["LIN","Linde","Chemicals"],
+  ["ADBE","Adobe","Software"],["IBM","IBM","IT Services"],
+  ["UBER","Uber","Transport"],["COIN","Coinbase","Financial Services"],
   ["CRWD","CrowdStrike","Cybersecurity"]
 ];
 
-const fallbackMY = [
-  ["1023.KL","CIMB","Banks"],
-  ["1155.KL","Maybank","Banks"],
-  ["1295.KL","Public Bank","Banks"],
-  ["5819.KL","Hong Leong Bank","Banks"],
+const myFallback = [
+  ["1023.KL","CIMB","Banks"],["1155.KL","Maybank","Banks"],
+  ["1295.KL","Public Bank","Banks"],["5819.KL","Hong Leong Bank","Banks"],
   ["4863.KL","Telekom Malaysia","Telecommunications"],
   ["6012.KL","Maxis","Telecommunications"],
   ["6947.KL","CelcomDigi","Telecommunications"],
@@ -77,28 +62,16 @@ const fallbackMY = [
 ];
 
 const shariahSeed = {
-  "5347.KL":1,
-  "5398.KL":1,
-  "5211.KL":1,
-  "5285.KL":1,
-  "4197.KL":1,
-  "1961.KL":1,
-  "8869.KL":1,
-  "3816.KL":1,
-  "7089.KL":1,
-  "4677.KL":1,
-  "7084.KL":1,
-  "5225.KL":1,
-  "7153.KL":1,
-  "7113.KL":1,
-  "7086.KL":1,
-  "0166.KL":1,
+  "5347.KL":1,"5398.KL":1,"5211.KL":1,"5285.KL":1,
+  "4197.KL":1,"1961.KL":1,"8869.KL":1,"3816.KL":1,
+  "7089.KL":1,"4677.KL":1,"7084.KL":1,"5225.KL":1,
+  "7153.KL":1,"7113.KL":1,"7086.KL":1,"0166.KL":1,
   "0097.KL":1
 };
 
 /* =========================================================
    FORMAT
-========================================================= */
+   ========================================================= */
 
 function fmt(n) {
   n = Number(n);
@@ -111,184 +84,146 @@ function fmt(n) {
 }
 
 /* =========================================================
-   RADAR
-========================================================= */
+   RADAR API
+   ========================================================= */
 
-async function getRadar(market) {
+async function radar(market) {
 
   try {
 
     const r = await fetch(
       `/api/radar?market=${encodeURIComponent(market)}`,
-      {
-        cache: "no-store"
-      }
+      { cache: "no-store" }
     );
 
     if (!r.ok) {
-      throw new Error(
-        `Radar HTTP ${r.status}`
-      );
+      throw new Error("Radar API HTTP " + r.status);
     }
 
     const j = await r.json();
 
-    if (
-      !j ||
-      !j.ok ||
-      !Array.isArray(j.candidates)
-    ) {
+    if (!j?.ok || !Array.isArray(j.candidates)) {
       throw new Error("Invalid radar response");
     }
 
-    const candidates =
-      j.candidates
-        .map(x => {
+    console.log(
+      `[RADAR ${market}]`,
+      j.count,
+      "candidates"
+    );
 
-          const symbol =
-            x.symbol;
-
-          const name =
-            x.name ||
-            symbol;
-
-          return [
-            symbol,
-            name,
-            inferSector(symbol,name,market)
-          ];
-        })
-        .filter(x => x[0]);
-
-    if (candidates.length) {
-      return candidates;
-    }
+    return j.candidates;
 
   } catch (e) {
 
     console.warn(
-      "Radar unavailable:",
-      e
+      `[RADAR ${market}] failed:`,
+      e.message
     );
+
+    return [];
+  }
+}
+
+/* =========================================================
+   NORMALISE RADAR → APP FORMAT
+   ========================================================= */
+
+function normaliseCandidates(candidates, market) {
+
+  const fallback =
+    market === "US"
+      ? usFallback
+      : myFallback;
+
+  const fallbackMap =
+    new Map(
+      fallback.map(x => [x[0], x])
+    );
+
+  if (!candidates.length) {
+    return fallback;
   }
 
-  return market === "US"
-    ? fallbackUS
-    : fallbackMY;
+  return candidates.map(x => {
+
+    const old =
+      fallbackMap.get(x.symbol);
+
+    return [
+      x.symbol,
+
+      x.name ||
+      old?.[1] ||
+      x.symbol,
+
+      old?.[2] ||
+      inferSector(x.name || x.symbol),
+
+      {
+        radarPrice: Number(x.price || 0),
+        radarChange: Number(x.change || 0),
+        radarVolume: Number(x.volume || 0),
+        marketCap: Number(x.marketCap || 0)
+      }
+    ];
+
+  });
+
 }
 
 /* =========================================================
    SECTOR INFERENCE
-========================================================= */
+   ========================================================= */
 
-function inferSector(symbol,name,market) {
+function inferSector(name) {
 
-  const s =
-    `${symbol} ${name}`.toLowerCase();
-
-  if (market === "MY") {
-
-    if (
-      /cimb|maybank|public bank|hong leong bank/.test(s)
-    ) return "Banks";
-
-    if (
-      /telekom|maxis|celcom|digi/.test(s)
-    ) return "Telecommunications";
-
-    if (
-      /ytl power|petronas gas|utilities/.test(s)
-    ) return "Utilities";
-
-    if (
-      /gamuda|ijm|sunway|construction/.test(s)
-    ) return "Construction";
-
-    if (
-      /plantation|ioi|klk|sime darby plantation/.test(s)
-    ) return "Plantation";
-
-    if (
-      /petronas|dialog|misc|oil|gas/.test(s)
-    ) return "Oil & Gas";
-
-    if (
-      /semiconductor|frontken|greatech/.test(s)
-    ) return "Semiconductors";
-
-    if (
-      /health|ihh|hartalega|kossan|glove/.test(s)
-    ) return "Healthcare";
-
-    if (
-      /food|nestle|ql|ppb/.test(s)
-    ) return "Food";
-
-    return "Others";
-  }
+  const n =
+    String(name || "").toLowerCase();
 
   if (
-    /nvda|amd|avgo|tsm|micron|intel|semiconductor|chip/.test(s)
-  ) return "Semiconductors";
-
-  if (
-    /microsoft|oracle|salesforce|adobe|software|palantir/.test(s)
-  ) return "Software";
-
-  if (
-    /apple|hardware/.test(s)
-  ) return "Technology Hardware";
-
-  if (
-    /google|alphabet|amazon|meta|uber|internet/.test(s)
-  ) return "Internet";
-
-  if (
-    /tesla|ford|gm|automobile|auto/.test(s)
-  ) return "Automobiles";
-
-  if (
-    /eli lilly|pharma|drug|biotech/.test(s)
-  ) return "Pharmaceuticals";
-
-  if (
-    /unitedhealth|health|medical/.test(s)
-  ) return "Healthcare";
-
-  if (
-    /exxon|chevron|energy|oil/.test(s)
-  ) return "Energy";
-
-  if (
-    /jpmorgan|bank of america|bank/.test(s)
-  ) return "Banks";
-
-  if (
-    /visa|mastercard|coinbase|financial/.test(s)
+    n.includes("bank") ||
+    n.includes("financial") ||
+    n.includes("capital")
   ) return "Financial Services";
 
   if (
-    /walmart|costco|retail/.test(s)
-  ) return "Retail";
+    n.includes("semiconductor") ||
+    n.includes("chip")
+  ) return "Semiconductors";
 
   if (
-    /caterpillar|ge aerospace|industrial/.test(s)
+    n.includes("software") ||
+    n.includes("technology")
+  ) return "Technology";
+
+  if (
+    n.includes("energy") ||
+    n.includes("oil") ||
+    n.includes("gas")
+  ) return "Energy";
+
+  if (
+    n.includes("health") ||
+    n.includes("pharma")
+  ) return "Healthcare";
+
+  if (
+    n.includes("retail") ||
+    n.includes("consumer")
+  ) return "Consumer";
+
+  if (
+    n.includes("industrial") ||
+    n.includes("aerospace")
   ) return "Industrials";
 
-  if (
-    /rtx|aerospace|defense/.test(s)
-  ) return "Aerospace & Defense";
-
-  if (
-    /crowdstrike|cybersecurity/.test(s)
-  ) return "Cybersecurity";
-
-  return "Others";
+  return "Other";
 }
 
 /* =========================================================
-   MARKET DATA
-========================================================= */
+   MARKET CANDLES
+   ========================================================= */
 
 async function candles(symbol, interval = "1d") {
 
@@ -296,9 +231,7 @@ async function candles(symbol, interval = "1d") {
 
     const r = await fetch(
       `/api/market?symbol=${encodeURIComponent(symbol)}&range=6mo&interval=${interval}`,
-      {
-        cache: "no-store"
-      }
+      { cache: "no-store" }
     );
 
     if (!r.ok) return [];
@@ -306,25 +239,22 @@ async function candles(symbol, interval = "1d") {
     const j = await r.json();
 
     if (
-      !j ||
-      !j.ok ||
+      !j?.ok ||
       !Array.isArray(j.candles)
     ) {
       return [];
     }
 
     return j.candles.filter(x =>
-
       Number.isFinite(Number(x.close)) &&
       Number.isFinite(Number(x.high)) &&
       Number.isFinite(Number(x.low))
-
     );
 
   } catch (e) {
 
     console.warn(
-      "Market API failed:",
+      "Market API:",
       symbol,
       e
     );
@@ -334,10 +264,10 @@ async function candles(symbol, interval = "1d") {
 }
 
 /* =========================================================
-   SMA
-========================================================= */
+   INDICATORS
+   ========================================================= */
 
-function sma(values,n) {
+function sma(values, n) {
 
   if (
     !Array.isArray(values) ||
@@ -346,28 +276,27 @@ function sma(values,n) {
     return null;
   }
 
-  const arr =
+  const a =
     values.slice(-n);
 
   if (
-    arr.some(
+    a.some(
       v => !Number.isFinite(Number(v))
     )
   ) {
     return null;
   }
 
-  return arr.reduce(
-    (a,b) => a + Number(b),
-    0
-  ) / n;
+  return (
+    a.reduce(
+      (sum, v) =>
+        sum + Number(v),
+      0
+    ) / n
+  );
 }
 
-/* =========================================================
-   ATR
-========================================================= */
-
-function atr(c,n=14) {
+function atr(c, n = 14) {
 
   if (
     !c ||
@@ -391,25 +320,21 @@ function atr(c,n=14) {
       Number(c[i].low);
 
     const pc =
-      Number(c[i-1].close);
+      Number(c[i - 1].close);
 
     tr.push(
       Math.max(
-        h-l,
-        Math.abs(h-pc),
-        Math.abs(l-pc)
+        h - l,
+        Math.abs(h - pc),
+        Math.abs(l - pc)
       )
     );
   }
 
-  return sma(tr,n) || 0;
+  return sma(tr, n) || 0;
 }
 
-/* =========================================================
-   RSI
-========================================================= */
-
-function rsi(c,n=14) {
+function rsi(c, n = 14) {
 
   if (
     !c ||
@@ -422,14 +347,14 @@ function rsi(c,n=14) {
   let losses = 0;
 
   for (
-    let i = c.length-n;
+    let i = c.length - n;
     i < c.length;
     i++
   ) {
 
     const change =
       Number(c[i].close) -
-      Number(c[i-1].close);
+      Number(c[i - 1].close);
 
     if (change > 0) {
       gains += change;
@@ -441,21 +366,21 @@ function rsi(c,n=14) {
   }
 
   if (losses === 0) {
-    return gains > 0 ? 100 : 50;
+    return gains > 0
+      ? 100
+      : 50;
   }
 
   const rs =
     gains / losses;
 
-  return 100 -
-    100 / (1 + rs);
+  return (
+    100 -
+    (100 / (1 + rs))
+  );
 }
 
-/* =========================================================
-   MOMENTUM
-========================================================= */
-
-function momentum(c,period=20) {
+function momentum(c, period = 20) {
 
   if (
     !c ||
@@ -469,7 +394,7 @@ function momentum(c,period=20) {
 
   const old =
     Number(
-      c.at(-1-period).close
+      c.at(-1 - period).close
     );
 
   if (!old) return 0;
@@ -479,11 +404,7 @@ function momentum(c,period=20) {
   );
 }
 
-/* =========================================================
-   VOLUME
-========================================================= */
-
-function volumeStrength(c,n=20) {
+function volumeStrength(c, n = 20) {
 
   if (
     !c ||
@@ -493,12 +414,14 @@ function volumeStrength(c,n=20) {
   }
 
   const volumes =
-    c.slice(
-      -(n+1),
-      -1
-    )
-    .map(x => Number(x.volume))
-    .filter(Number.isFinite);
+    c
+      .slice(-(n + 1), -1)
+      .map(
+        x => Number(x.volume)
+      )
+      .filter(
+        Number.isFinite
+      );
 
   const latest =
     Number(c.at(-1).volume);
@@ -512,7 +435,7 @@ function volumeStrength(c,n=20) {
 
   const avg =
     volumes.reduce(
-      (a,b) => a+b,
+      (a, b) => a + b,
       0
     ) / volumes.length;
 
@@ -522,8 +445,8 @@ function volumeStrength(c,n=20) {
 }
 
 /* =========================================================
-   SCORE
-========================================================= */
+   TECHNICAL SCORE
+   ========================================================= */
 
 function technicalScore(c) {
 
@@ -543,16 +466,16 @@ function technicalScore(c) {
     closes.at(-1);
 
   const ma20 =
-    sma(closes,20);
+    sma(closes, 20);
 
   const ma50 =
-    sma(closes,50);
+    sma(closes, 50);
 
   const r =
     rsi(c);
 
   const mom =
-    momentum(c,20);
+    momentum(c, 20);
 
   const vol =
     volumeStrength(c);
@@ -566,6 +489,8 @@ function technicalScore(c) {
   }
 
   let score = 50;
+
+  /* Trend */
 
   if (price > ma20)
     score += 8;
@@ -582,24 +507,29 @@ function technicalScore(c) {
   else
     score -= 8;
 
+  /* RSI */
+
   if (
     r >= 55 &&
     r <= 70
   ) {
     score += 8;
-  }
-  else if (
+  } else if (
     r >= 45 &&
     r < 55
   ) {
     score += 2;
-  }
-  else if (r < 40) {
+  } else if (
+    r < 40
+  ) {
     score -= 7;
-  }
-  else if (r > 75) {
+  } else if (
+    r > 75
+  ) {
     score -= 4;
   }
+
+  /* Momentum */
 
   if (mom > 8)
     score += 10;
@@ -613,6 +543,8 @@ function technicalScore(c) {
     score -= 7;
   else
     score -= 3;
+
+  /* Volume */
 
   if (vol >= 1.5)
     score += 6;
@@ -631,8 +563,8 @@ function technicalScore(c) {
 }
 
 /* =========================================================
-   SETUP
-========================================================= */
+   TRADE SETUP
+   ========================================================= */
 
 function setup(c) {
 
@@ -642,18 +574,18 @@ function setup(c) {
   ) {
 
     return {
-      dir:"WAIT",
-      entry:null,
-      sl:null,
-      tp1:null,
-      tp2:null,
-      tp3:null,
-      atr:0,
-      rsi:50,
-      ma20:null,
-      ma50:null,
-      momentum:0,
-      volumeRatio:0
+      dir: "WAIT",
+      entry: null,
+      sl: null,
+      tp1: null,
+      tp2: null,
+      tp3: null,
+      atr: 0,
+      rsi: 50,
+      ma20: null,
+      ma50: null,
+      momentum: 0,
+      volumeRatio: 0
     };
   }
 
@@ -666,10 +598,10 @@ function setup(c) {
     );
 
   const ma20 =
-    sma(closes,20);
+    sma(closes, 20);
 
   const ma50 =
-    sma(closes,50);
+    sma(closes, 50);
 
   const a =
     atr(c);
@@ -678,7 +610,7 @@ function setup(c) {
     rsi(c);
 
   const mom =
-    momentum(c,20);
+    momentum(c, 20);
 
   const vol =
     volumeStrength(c);
@@ -713,9 +645,7 @@ function setup(c) {
     a ||
     price * 0.015;
 
-  const entry =
-    price;
-
+  let entry = price;
   let sl = null;
   let tp1 = null;
   let tp2 = null;
@@ -766,18 +696,18 @@ function setup(c) {
     tp1,
     tp2,
     tp3,
-    atr:risk,
-    rsi:r,
+    atr: risk,
+    rsi: r,
     ma20,
     ma50,
-    momentum:mom,
-    volumeRatio:vol
+    momentum: mom,
+    volumeRatio: vol
   };
 }
 
 /* =========================================================
-   ANALYZE
-========================================================= */
+   ANALYSE COUNTER
+   ========================================================= */
 
 async function analyze(item) {
 
@@ -788,23 +718,21 @@ async function analyze(item) {
 
     return {
       ...item,
-      c:[],
-      score:0,
-      set:setup([])
+      c: [],
+      score: 0,
+      set: setup([]),
+      radar: item[3] || {}
     };
   }
 
   return {
     ...item,
     c,
-    score:technicalScore(c),
-    set:setup(c)
+    score: technicalScore(c),
+    set: setup(c),
+    radar: item[3] || {}
   };
 }
-
-/* =========================================================
-   ANALYZE ALL
-========================================================= */
 
 async function analyzeAll(list) {
 
@@ -812,6 +740,7 @@ async function analyzeAll(list) {
 
   /*
     Batch 5.
+    Kekalkan supaya API tidak dibom.
   */
 
   for (
@@ -821,7 +750,7 @@ async function analyzeAll(list) {
   ) {
 
     const batch =
-      list.slice(i,i+5);
+      list.slice(i, i + 5);
 
     const rows =
       await Promise.all(
@@ -836,7 +765,7 @@ async function analyzeAll(list) {
 
 /* =========================================================
    SECTOR RANKING
-========================================================= */
+   ========================================================= */
 
 function sectorRanking(results) {
 
@@ -845,7 +774,7 @@ function sectorRanking(results) {
   for (const x of results) {
 
     const sector =
-      x[2] || "Others";
+      x[2] || "Other";
 
     if (!groups[sector]) {
       groups[sector] = [];
@@ -857,106 +786,43 @@ function sectorRanking(results) {
   }
 
   return Object.entries(groups)
-
-    .map(([name,values]) => {
-
-      const score =
+    .filter(
+      ([, values]) =>
         values.length
-          ? Math.round(
-              values.reduce(
-                (a,b) => a+b,
-                0
-              ) /
-              values.length
-            )
-          : 0;
-
-      return {
+    )
+    .map(
+      ([name, values]) => ({
         name,
-        score,
-        count:values.length
-      };
-    })
 
+        score:
+          Math.round(
+            values.reduce(
+              (a, b) => a + b,
+              0
+            ) /
+            values.length
+          ),
+
+        count:
+          values.length
+      })
+    )
     .sort(
-      (a,b) =>
-        b.score-a.score
+      (a, b) =>
+        b.score - a.score
     );
 }
 
 /* =========================================================
-   FOCUS RANKING
-========================================================= */
-
-function focusRanking(results) {
-
-  return results
-
-    .filter(
-      x =>
-        x.c?.length &&
-        x.score > 0
-    )
-
-    .sort((a,b) => {
-
-      let sa =
-        a.score;
-
-      let sb =
-        b.score;
-
-      /*
-        Signal confirmation
-      */
-
-      if (
-        a.set.dir === "BUY" ||
-        a.set.dir === "SELL"
-      ) {
-        sa += 5;
-      }
-
-      if (
-        b.set.dir === "BUY" ||
-        b.set.dir === "SELL"
-      ) {
-        sb += 5;
-      }
-
-      /*
-        Momentum bonus
-      */
-
-      sa += Math.min(
-        Math.abs(
-          a.set.momentum || 0
-        ),
-        10
-      );
-
-      sb += Math.min(
-        Math.abs(
-          b.set.momentum || 0
-        ),
-        10
-      );
-
-      return sb-sa;
-
-    })
-
-    .slice(0,12);
-}
-
-/* =========================================================
    RENDER SECTORS
-========================================================= */
+   ========================================================= */
 
-function renderSectors(id,sectors) {
+function renderSectors(
+  id,
+  sectors
+) {
 
-  const el =
-    $(id);
+  const el = $(id);
 
   if (!el) return;
 
@@ -971,34 +837,126 @@ function renderSectors(id,sectors) {
   }
 
   el.innerHTML =
-    sectors.map((s,i) => `
+    sectors
+      .slice(0, 10)
+      .map(
+        (s, i) => `
+          <div class="sector">
 
-      <div class="sector">
+            <b>#${i + 1}</b>
 
-        <b>#${i+1}</b>
+            <span>
+              ${s.name}
 
-        <span>
+              <div class="bar">
+                <i
+                  style="width:${s.score}%"
+                ></i>
+              </div>
+            </span>
 
-          ${s.name}
+            <b>${s.score}</b>
 
-          <div class="bar">
-            <i
-              style="width:${s.score}%"
-            ></i>
           </div>
+        `
+      )
+      .join("");
+}
 
-        </span>
+/* =========================================================
+   COUNTER RANKING
+   ========================================================= */
 
-        <b>${s.score}</b>
+function focusRanking(results) {
 
-      </div>
+  return results
+    .filter(
+      x => x.c?.length
+    )
+    .sort(
+      (a, b) => {
 
-    `).join("");
+        let sa =
+          a.score;
+
+        let sb =
+          b.score;
+
+        /*
+          Radar live change
+        */
+
+        const ac =
+          Number(
+            a.radar?.radarChange ||
+            0
+          );
+
+        const bc =
+          Number(
+            b.radar?.radarChange ||
+            0
+          );
+
+        sa +=
+          Math.min(
+            Math.abs(ac) * 1.5,
+            10
+          );
+
+        sb +=
+          Math.min(
+            Math.abs(bc) * 1.5,
+            10
+          );
+
+        /*
+          Signal bonus
+        */
+
+        if (
+          a.set.dir === "BUY" ||
+          a.set.dir === "SELL"
+        ) {
+          sa += 5;
+        }
+
+        if (
+          b.set.dir === "BUY" ||
+          b.set.dir === "SELL"
+        ) {
+          sb += 5;
+        }
+
+        /*
+          Momentum
+        */
+
+        sa +=
+          Math.min(
+            Math.abs(
+              a.set.momentum || 0
+            ),
+            10
+          );
+
+        sb +=
+          Math.min(
+            Math.abs(
+              b.set.momentum || 0
+            ),
+            10
+          );
+
+        return sb - sa;
+      }
+    )
+    .slice(0, 12);
 }
 
 /* =========================================================
    RENDER FOCUS
-========================================================= */
+   ========================================================= */
 
 function renderFocus(focus) {
 
@@ -1018,57 +976,82 @@ function renderFocus(focus) {
   }
 
   el.innerHTML =
-    focus.map((x,i) => {
+    focus
+      .map(
+        (x, i) => {
 
-      const cls =
-        x.set.dir === "BUY"
-          ? "up"
-          : x.set.dir === "SELL"
-            ? "down"
-            : "";
+          const cls =
+            x.set.dir === "BUY"
+              ? "up"
+              : x.set.dir === "SELL"
+                ? "down"
+                : "";
 
-      return `
+          const change =
+            Number(
+              x.radar?.radarChange ||
+              0
+            );
 
-        <div
-          class="focusrow"
-          data-symbol="${x[0]}"
-        >
+          return `
 
-          <b>#${i+1}</b>
+            <div
+              class="focusrow"
+              data-symbol="${x[0]}"
+            >
 
-          <div>
+              <b>#${i + 1}</b>
 
-            <b>${x[0]}</b>
+              <div>
 
-            <div class="muted">
-              ${x[1]} · ${x[2]}
+                <b>${x[0]}</b>
+
+                <div class="muted">
+                  ${x[1]} · ${x[2]}
+                </div>
+
+              </div>
+
+              <span>
+                ${x.score}
+              </span>
+
+              <span class="${cls}">
+                ${x.set.dir}
+              </span>
+
+              <span
+                class="${
+                  change >= 0
+                    ? "up"
+                    : "down"
+                }"
+              >
+                ${
+                  change >= 0
+                    ? "+"
+                    : ""
+                }${change.toFixed(2)}%
+              </span>
+
+              <span class="hideM">
+                ${fmt(x.set.entry)}
+              </span>
+
+              <span class="hideM">
+                ${fmt(x.set.sl)}
+              </span>
+
             </div>
-
-          </div>
-
-          <span>
-            ${x.score}
-          </span>
-
-          <span class="${cls}">
-            ${x.set.dir}
-          </span>
-
-          <span class="hideM">
-            ${fmt(x.set.entry)}
-          </span>
-
-          <span class="hideM">
-            ${fmt(x.set.sl)}
-          </span>
-
-        </div>
-      `;
-
-    }).join("");
+          `;
+        }
+      )
+      .join("");
 
   document
-    .querySelectorAll(".focusrow")
+    .querySelectorAll(
+      ".focusrow"
+    )
     .forEach(el => {
 
       el.onclick = () => {
@@ -1078,7 +1061,8 @@ function renderFocus(focus) {
 
         const item =
           focus.find(
-            x => x[0] === symbol
+            x =>
+              x[0] === symbol
           );
 
         if (item) {
@@ -1094,11 +1078,12 @@ function renderFocus(focus) {
 
 /* =========================================================
    MAIN RENDER
-========================================================= */
+   ========================================================= */
 
 async function render() {
 
-  if (rendering) return;
+  if (rendering)
+    return;
 
   rendering = true;
 
@@ -1107,40 +1092,37 @@ async function render() {
     if ($("#stamp")) {
 
       $("#stamp").textContent =
-        `Scanning ${mode} market…`;
+        `Scanning ${mode} radar…`;
     }
 
     /*
-      STEP 1
-      Dynamic radar
+      1. Ambil candidate LIVE
+      daripada /api/radar.js
     */
 
     const candidates =
-      await getRadar(mode);
+      await radar(mode);
 
     /*
-      STEP 2
-      Technical analysis
+      2. Kalau radar kosong,
+      guna fallback universe.
     */
 
-    const ranked =
-      await analyzeAll(
-        candidates
+    const list =
+      normaliseCandidates(
+        candidates,
+        mode
       );
 
     /*
-      STEP 3
-      Highest score first
+      3. Technical analysis
     */
 
-    ranked.sort(
-      (a,b) =>
-        b.score-a.score
-    );
+    const ranked =
+      await analyzeAll(list);
 
     /*
-      STEP 4
-      Sector ranking
+      4. Sector ranking
     */
 
     const sectors =
@@ -1154,35 +1136,31 @@ async function render() {
     );
 
     /*
-      STEP 5
-      Market mood
+      5. Market mood
     */
 
-    const strongest =
-      sectors[0];
+    if (
+      mode === "US" &&
+      $("#usMood")
+    ) {
 
-    if (mode === "US") {
+      $("#usMood").textContent =
+        sectors[0]?.name ||
+        "—";
+    }
 
-      if ($("#usMood")) {
+    if (
+      mode === "MY" &&
+      $("#myMood")
+    ) {
 
-        $("#usMood").textContent =
-          strongest?.name ||
-          "—";
-      }
-
-    } else {
-
-      if ($("#myMood")) {
-
-        $("#myMood").textContent =
-          strongest?.name ||
-          "—";
-      }
+      $("#myMood").textContent =
+        sectors[0]?.name ||
+        "—";
     }
 
     /*
-      STEP 6
-      Counter ranking
+      6. Counter focus
     */
 
     const focus =
@@ -1191,8 +1169,7 @@ async function render() {
     renderFocus(focus);
 
     /*
-      STEP 7
-      Open strongest counter
+      7. Auto-open #1
     */
 
     if (focus[0]) {
@@ -1206,13 +1183,13 @@ async function render() {
     if ($("#stamp")) {
 
       $("#stamp").textContent =
-        `Updated ${new Date().toLocaleString()}`;
+        `Updated ${new Date().toLocaleString()} · ${mode} · ${ranked.length} counters`;
     }
 
   } catch (e) {
 
     console.error(
-      "Dashboard error:",
+      "Render error:",
       e
     );
 
@@ -1229,10 +1206,13 @@ async function render() {
 }
 
 /* =========================================================
-   COUNTER DETAIL
-========================================================= */
+   DETAIL COUNTER
+   ========================================================= */
 
-async function openCounter(symbol,x) {
+async function openCounter(
+  symbol,
+  x
+) {
 
   try {
 
@@ -1275,18 +1255,16 @@ async function openCounter(symbol,x) {
 
       $("#dShariah").textContent =
         mode === "MY"
-
           ? (
               shariahSeed[symbol]
                 ? "SHARIAH ✓"
                 : "SHARIAH: CHECK SC LIST"
             )
-
           : "US: CHECK SCREEN";
     }
 
     /*
-      TRADE
+      TRADE BOX
     */
 
     if ($("#tradeBox")) {
@@ -1305,15 +1283,14 @@ async function openCounter(symbol,x) {
 
         [
           "TP1 / TP2 / TP3",
-
           s.dir === "WAIT"
             ? "—"
-            : `${fmt(s.tp1)} / ${fmt(s.tp2)} / ${fmt(s.tp3)}`
+            :
+              `${fmt(s.tp1)} / ${fmt(s.tp2)} / ${fmt(s.tp3)}`
         ],
 
         [
           "Stop loss",
-
           s.dir === "WAIT"
             ? "—"
             : fmt(s.sl)
@@ -1321,25 +1298,28 @@ async function openCounter(symbol,x) {
 
         [
           "Risk / Reward",
-
           s.dir === "WAIT"
             ? "—"
             : "1 : 1 / 1 : 1.5 / 1 : 2.2"
         ]
 
       ]
-      .map(a => `
+        .map(
+          a => `
+            <div class="metric">
 
-        <div class="metric">
+              <small>
+                ${a[0]}
+              </small>
 
-          <small>${a[0]}</small>
+              <b>
+                ${a[1]}
+              </b>
 
-          <b>${a[1]}</b>
-
-        </div>
-
-      `)
-      .join("");
+            </div>
+          `
+        )
+        .join("");
     }
 
     /*
@@ -1359,7 +1339,7 @@ async function openCounter(symbol,x) {
 
           <div class="line">
             <span>RSI(14)</span>
-            <b>${Number(s.rsi).toFixed(1)}</b>
+            <b>${s.rsi.toFixed(1)}</b>
           </div>
 
           <div class="line">
@@ -1374,12 +1354,12 @@ async function openCounter(symbol,x) {
 
           <div class="line">
             <span>Momentum 20D</span>
-            <b>${Number(s.momentum).toFixed(2)}%</b>
+            <b>${s.momentum.toFixed(2)}%</b>
           </div>
 
           <div class="line">
             <span>Volume ratio</span>
-            <b>${Number(s.volumeRatio).toFixed(2)}x</b>
+            <b>${s.volumeRatio.toFixed(2)}x</b>
           </div>
 
           <div class="line">
@@ -1388,9 +1368,33 @@ async function openCounter(symbol,x) {
           </div>
 
           <div class="line">
+            <span>Radar change</span>
+            <b>
+              ${
+                Number(
+                  x.radar?.radarChange ||
+                  0
+                ).toFixed(2)
+              }%
+            </b>
+          </div>
+
+          <div class="line">
+            <span>Radar volume</span>
+            <b>
+              ${
+                Number(
+                  x.radar?.radarVolume ||
+                  0
+                ).toLocaleString()
+              }
+            </b>
+          </div>
+
+          <div class="line">
             <span>Method</span>
             <b>
-              Trend + Momentum + Volume + ATR
+              Trend + Momentum + Volume + ATR + Radar
             </b>
           </div>
 
@@ -1399,7 +1403,7 @@ async function openCounter(symbol,x) {
     }
 
     /*
-      FUNDAMENTAL / RADAR HEALTH
+      FUNDAMENTAL / RADAR
     */
 
     const latest =
@@ -1407,8 +1411,34 @@ async function openCounter(symbol,x) {
         c.at(-1)?.close || 0
       );
 
+    const base =
+      c
+        .slice(-20)
+        .map(
+          x =>
+            Number(x.close)
+        );
+
     const growth =
-      momentum(c,20);
+      base.length > 1 &&
+      base[0]
+        ? (
+            (latest / base[0] - 1) *
+            100
+          )
+        : 0;
+
+    const radarChange =
+      Number(
+        x.radar?.radarChange ||
+        0
+      );
+
+    const radarVolume =
+      Number(
+        x.radar?.radarVolume ||
+        0
+      );
 
     if ($("#fundamental")) {
 
@@ -1432,13 +1462,41 @@ async function openCounter(symbol,x) {
           </div>
 
           <div class="line">
-            <span>Market data</span>
-            <b>Yahoo Finance</b>
+            <span>Live change</span>
+            <b>
+              ${
+                radarChange >= 0
+                  ? "+"
+                  : ""
+              }${radarChange.toFixed(2)}%
+            </b>
+          </div>
+
+          <div class="line">
+            <span>Market volume</span>
+            <b>
+              ${radarVolume.toLocaleString()}
+            </b>
+          </div>
+
+          <div class="line">
+            <span>Market cap</span>
+            <b>
+              ${
+                Number(
+                  x.radar?.marketCap ||
+                  0
+                )
+                  ? Number(
+                      x.radar.marketCap
+                    ).toLocaleString()
+                  : "—"
+              }
+            </b>
           </div>
 
           <div class="line">
             <span>Decision</span>
-
             <b>
               ${
                 x.score >= 75
@@ -1447,10 +1505,9 @@ async function openCounter(symbol,x) {
                     ? "FOCUS"
                     : x.score >= 55
                       ? "MONITOR"
-                      : "WAIT"
+                      : "AVOID FOR NOW"
               }
             </b>
-
           </div>
 
         </div>
@@ -1461,7 +1518,10 @@ async function openCounter(symbol,x) {
       CHART
     */
 
-    draw(c,symbol);
+    draw(
+      c,
+      symbol
+    );
 
     /*
       COMPANY DOCUMENTS
@@ -1472,16 +1532,13 @@ async function openCounter(symbol,x) {
       const r =
         await fetch(
           `/api/company?symbol=${encodeURIComponent(symbol)}`,
-          {
-            cache:"no-store"
-          }
+          { cache: "no-store" }
         );
 
-      if (!r.ok) {
+      if (!r.ok)
         throw new Error(
-          "Company API failed"
+          "Company API"
         );
-      }
 
       const j =
         await r.json();
@@ -1490,19 +1547,19 @@ async function openCounter(symbol,x) {
 
         $("#docs").innerHTML =
           (j.documents || [])
-            .map(d => `
+            .map(
+              d => `
 
-              <a
-                target="_blank"
-                rel="noopener"
-                href="${d.url}"
-              >
-                ${d.type}
-                ·
-                ${d.date || ""}
-              </a>
+                <a
+                  target="_blank"
+                  rel="noopener"
+                  href="${d.url}"
+                >
+                  ${d.type} · ${d.date || ""}
+                </a>
 
-            `)
+              `
+            )
             .join("")
           ||
           "<span class='muted'>No documents returned.</span>";
@@ -1529,9 +1586,12 @@ async function openCounter(symbol,x) {
 
 /* =========================================================
    CHART
-========================================================= */
+   ========================================================= */
 
-function draw(c,symbol) {
+function draw(
+  c,
+  symbol
+) {
 
   const canvas =
     $("#chart");
@@ -1541,7 +1601,6 @@ function draw(c,symbol) {
   if (chart) {
 
     chart.destroy();
-
     chart = null;
   }
 
@@ -1549,65 +1608,65 @@ function draw(c,symbol) {
     c.slice(-80);
 
   const labels =
-    data.map(x =>
-      new Date(
-        x.time
-      ).toLocaleDateString()
+    data.map(
+      x =>
+        new Date(x.time)
+          .toLocaleDateString()
     );
 
   const prices =
-    data.map(x =>
-      Number(x.close)
+    data.map(
+      x =>
+        Number(x.close)
     );
 
   chart =
     new Chart(
       canvas,
       {
-        type:"line",
+        type: "line",
 
-        data:{
+        data: {
+
           labels,
 
-          datasets:[{
-
-            label:symbol,
-
-            data:prices,
-
-            borderWidth:2,
-
-            pointRadius:0,
-
-            tension:0.2
-
-          }]
+          datasets: [
+            {
+              label: symbol,
+              data: prices,
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.2
+            }
+          ]
         },
 
-        options:{
+        options: {
 
-          responsive:true,
+          responsive: true,
 
-          maintainAspectRatio:false,
+          maintainAspectRatio: false,
 
-          plugins:{
+          plugins: {
 
-            legend:{
-              display:false
+            legend: {
+              display: false
             }
           },
 
-          scales:{
+          scales: {
 
-            x:{
-              ticks:{
-                display:false
+            x: {
+
+              ticks: {
+                display: false
               }
             },
 
-            y:{
-              grid:{
-                color:"#252b33"
+            y: {
+
+              grid: {
+                color: "#252b33"
               }
             }
           }
@@ -1618,35 +1677,41 @@ function draw(c,symbol) {
 
 /* =========================================================
    TABS
-========================================================= */
+   ========================================================= */
 
 document
   .querySelectorAll(".tab")
-  .forEach(button => {
+  .forEach(
+    button => {
 
-    button.onclick =
-      async () => {
+      button.onclick =
+        async () => {
 
-        document
-          .querySelectorAll(".tab")
-          .forEach(x =>
-            x.classList.remove("active")
+          document
+            .querySelectorAll(".tab")
+            .forEach(
+              x =>
+                x.classList.remove(
+                  "active"
+                )
+            );
+
+          button.classList.add(
+            "active"
           );
 
-        button.classList.add("active");
+          mode =
+            button.dataset.m ||
+            "US";
 
-        mode =
-          button.dataset.m ||
-          "US";
-
-        await render();
-      };
-
-  });
+          await render();
+        };
+    }
+  );
 
 /* =========================================================
    REFRESH
-========================================================= */
+   ========================================================= */
 
 if ($("#refresh")) {
 
@@ -1656,6 +1721,6 @@ if ($("#refresh")) {
 
 /* =========================================================
    START
-========================================================= */
+   ========================================================= */
 
 render();
