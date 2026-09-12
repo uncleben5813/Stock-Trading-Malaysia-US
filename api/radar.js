@@ -1,268 +1,236 @@
+// api/radar.js
+// Vercel Serverless - US + Malaysia Stock Radar
+// Safe mode: sequential batches, latest available data when market is closed.
+
 export default async function handler(req, res) {
-  try {
-    const market = String(req.query.market || "US").toUpperCase();
+  res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
 
-    const US_FALLBACK = [
-      "NVDA","AMD","AVGO","TSM","MU","INTC",
-      "AAPL","MSFT","GOOGL","AMZN","META","ORCL",
-      "CRM","PLTR","NFLX","TSLA","LLY","UNH",
-      "XOM","CVX","JPM","BAC","V","MA","WMT","COST",
-      "CAT","GE","RTX","LIN","ADBE","IBM","UBER",
-      "COIN","CRWD"
-    ];
+  const US_SYMBOLS = [
+    "KHC","SMR","INTC","NOK","SPCX","ORCL","NVDA","NU","AAL","BMNR",
+    "GRAB","KVUE","SMCI","MARA","AAPL","T","PATH","ONDS","F","ABEV",
+    "CIFR","NIO","HPE","AUR","RIG","PLUG","JOBY","SNAP","OPEN","IREN",
+    "WULF","KEEL","TSLA","PCG","HPQ","AGNC","AMZN","BSX","BAC","PFE",
+    "UBER","ITUB","HDB","SOFI","GOOGL","STLA","DNN","BBD","HL","NFLX",
+    "CPRT","VG","CLSK","PURR","VALE","OKLO","AVGO","ACHR","HOOD","NKE",
+    "MSTR","HBAN","RIVN","MU","AMD","CDE","PBR","CRWV","RKT","MRVL",
+    "TENB","WMT","CAG","META","INFY","LUMN","CCL","CNH","AMC","CMCSA",
+    "VZ","OWL","MRNA","BTG","PLTR","IONQ","NCLH","CCC","USAR","SLS",
+    "SKHY","DELL","RGTI","CSCO","RKLB","GGB","MSFT","PINS","ERIC","LYG"
+  ];
 
-    const MY_FALLBACK = [
-      "1023.KL","1155.KL","1295.KL","5819.KL",
-      "4863.KL","6012.KL","6947.KL","3042.KL",
-      "7089.KL","4677.KL","5183.KL","5681.KL",
-      "5347.KL","5398.KL","5211.KL","4197.KL",
-      "1961.KL","8869.KL","3816.KL","4707.KL",
-      "7084.KL","5225.KL","7153.KL","7113.KL",
-      "7086.KL","0166.KL","0097.KL","5285.KL",
-      "4065.KL","2445.KL"
-    ];
+  const MY_SYMBOLS = [
+    "1023.KL","1155.KL","1295.KL","5819.KL","4863.KL",
+    "6012.KL","6947.KL","3042.KL","7089.KL","4677.KL",
+    "5183.KL","5681.KL","5347.KL","5398.KL","5211.KL",
+    "4197.KL","1961.KL","8869.KL","3816.KL","4707.KL",
+    "7084.KL","5225.KL","7153.KL","7113.KL","7086.KL",
+    "0166.KL","0097.KL","5285.KL","4065.KL","2445.KL"
+  ];
 
-    /*
-      =========================================================
-      US RADAR
-      =========================================================
-    */
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-    if (market === "US") {
-      const candidates = new Map();
+  function safeNumber(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
 
-      const urls = [
-        "https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?scrIds=most_actives&count=100",
-        "https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?scrIds=day_gainers&count=100"
-      ];
+  function changePercent(price, previousClose) {
+    price = safeNumber(price);
+    previousClose = safeNumber(previousClose);
 
-      for (const url of urls) {
-        try {
-          const r = await fetch(url, {
-            headers: {
-              "User-Agent": "Mozilla/5.0"
-            }
-          });
+    if (!price || !previousClose) return 0;
 
-          if (!r.ok) continue;
+    return ((price - previousClose) / previousClose) * 100;
+  }
 
-          const j = await r.json();
+  async function getYahoo(symbol) {
+    const url =
+      "https://query1.finance.yahoo.com/v8/finance/chart/" +
+      encodeURIComponent(symbol) +
+      "?range=5d&interval=1d&events=history";
 
-          const quotes =
-            j?.finance?.result?.[0]?.quotes || [];
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 7000);
 
-          for (const q of quotes) {
-            const symbol = String(q.symbol || "");
-
-            if (!symbol) continue;
-
-            /*
-              Buang benda pelik / foreign listing.
-            */
-
-            if (
-              symbol.includes("^") ||
-              symbol.includes("=") ||
-              symbol.includes("-") ||
-              symbol.endsWith(".KL")
-            ) {
-              continue;
-            }
-
-            candidates.set(symbol, {
-              symbol,
-              name:
-                q.longName ||
-                q.shortName ||
-                symbol,
-              price:
-                Number(q.regularMarketPrice || 0),
-              change:
-                Number(
-                  q.regularMarketChangePercent || 0
-                ),
-              volume:
-                Number(
-                  q.regularMarketVolume || 0
-                ),
-              marketCap:
-                Number(q.marketCap || 0)
-            });
-          }
-        } catch (e) {
-          console.warn(
-            "US screener failed:",
-            e.message
-          );
-        }
-      }
-
-      /*
-        Kalau Yahoo US gagal,
-        guna universe asal.
-      */
-
-      if (!candidates.size) {
-        for (const symbol of US_FALLBACK) {
-          candidates.set(symbol, {
-            symbol,
-            name: symbol,
-            price: 0,
-            change: 0,
-            volume: 0,
-            marketCap: 0
-          });
-        }
-      }
-
-      const clean = [...candidates.values()]
-        .slice(0, 100);
-
-      return res.status(200).json({
-        ok: true,
-        market: "US",
-        count: clean.length,
-        source:
-          clean.some(x => x.price > 0)
-            ? "yahoo"
-            : "fallback",
-        candidates: clean
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Accept": "application/json"
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const json = await response.json();
+
+      const result = json?.chart?.result?.[0];
+
+      if (!result) {
+        return null;
+      }
+
+      const meta = result.meta || {};
+      const quote = result.indicators?.quote?.[0] || {};
+
+      const closes = Array.isArray(quote.close)
+        ? quote.close.filter(v => Number.isFinite(Number(v)))
+        : [];
+
+      const volumes = Array.isArray(quote.volume)
+        ? quote.volume.filter(v => Number.isFinite(Number(v)))
+        : [];
+
+      // IMPORTANT:
+      // When market is closed, regularMarketPrice can still contain
+      // the latest traded price.
+      let price = safeNumber(meta.regularMarketPrice);
+
+      if (!price && closes.length) {
+        price = safeNumber(closes[closes.length - 1]);
+      }
+
+      let previousClose = safeNumber(meta.previousClose);
+
+      // If previousClose is unavailable, calculate from last 2 candles.
+      if (!previousClose && closes.length >= 2) {
+        previousClose = safeNumber(closes[closes.length - 2]);
+      }
+
+      let volume = safeNumber(meta.regularMarketVolume);
+
+      if (!volume && volumes.length) {
+        volume = safeNumber(volumes[volumes.length - 1]);
+      }
+
+      const marketTime = meta.regularMarketTime
+        ? new Date(meta.regularMarketTime * 1000).toISOString()
+        : null;
+
+      const marketState = meta.marketState || "CLOSED";
+
+      const change = changePercent(price, previousClose);
+
+      return {
+        symbol,
+        name: meta.longName || meta.shortName || symbol,
+        price,
+        previousClose,
+        change,
+        volume,
+        marketCap: safeNumber(meta.marketCap),
+        currency: meta.currency || null,
+        exchange: meta.exchangeName || null,
+        marketState,
+        marketTime,
+        available: price > 0
+      };
+
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function scanMarket(symbols, market) {
+    const candidates = [];
+
+    // Small batches prevent Vercel from being overloaded.
+    const BATCH_SIZE = 5;
+
+    for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+      const batch = symbols.slice(i, i + BATCH_SIZE);
+
+      const results = await Promise.all(
+        batch.map(symbol => getYahoo(symbol))
+      );
+
+      for (const item of results) {
+        if (item) {
+          candidates.push(item);
+        }
+      }
+
+      // Small pause between batches.
+      if (i + BATCH_SIZE < symbols.length) {
+        await sleep(100);
+      }
     }
 
-    /*
-      =========================================================
-      MALAYSIA RADAR
-      =========================================================
+    // Sort by absolute movement first.
+    candidates.sort((a, b) => {
+      const moveA = Math.abs(safeNumber(a.change));
+      const moveB = Math.abs(safeNumber(b.change));
 
-      Yahoo predefined screener memang tidak reliable
-      untuk Bursa Malaysia.
-
-      Jadi kita terus ambil quote untuk universe kita.
-    */
-
-    if (market === "MY") {
-      const symbols = MY_FALLBACK.join(",");
-
-      let quotes = [];
-
-      try {
-        const url =
-          "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" +
-          encodeURIComponent(symbols);
-
-        const r = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0"
-          }
-        });
-
-        if (r.ok) {
-          const j = await r.json();
-
-          quotes =
-            j?.quoteResponse?.result || [];
-        }
-      } catch (e) {
-        console.warn(
-          "MY quote failed:",
-          e.message
-        );
+      if (moveB !== moveA) {
+        return moveB - moveA;
       }
 
-      const quoteMap = new Map();
-
-      for (const q of quotes) {
-        if (!q?.symbol) continue;
-
-        quoteMap.set(q.symbol, {
-          symbol: q.symbol,
-          name:
-            q.longName ||
-            q.shortName ||
-            q.symbol,
-          price:
-            Number(
-              q.regularMarketPrice || 0
-            ),
-          change:
-            Number(
-              q.regularMarketChangePercent || 0
-            ),
-          volume:
-            Number(
-              q.regularMarketVolume || 0
-            ),
-          marketCap:
-            Number(q.marketCap || 0)
-        });
-      }
-
-      /*
-        Pastikan semua 30 counter kekal wujud.
-      */
-
-      const candidates =
-        MY_FALLBACK.map(symbol => {
-
-          const live =
-            quoteMap.get(symbol);
-
-          if (live) {
-            return live;
-          }
-
-          return {
-            symbol,
-            name: symbol,
-            price: 0,
-            change: 0,
-            volume: 0,
-            marketCap: 0
-          };
-        });
-
-      const liveCount =
-        candidates.filter(
-          x => x.price > 0
-        ).length;
-
-      return res.status(200).json({
-        ok: true,
-        market: "MY",
-        count: candidates.length,
-        liveCount,
-        source:
-          liveCount > 0
-            ? "yahoo_quote"
-            : "fallback",
-        candidates
-      });
-    }
-
-    /*
-      =========================================================
-      INVALID MARKET
-      =========================================================
-    */
-
-    return res.status(400).json({
-      ok: false,
-      error:
-        "Invalid market. Use US or MY."
+      return safeNumber(b.volume) - safeNumber(a.volume);
     });
 
-  } catch (e) {
-    console.error(
-      "Radar error:",
-      e
-    );
+    return {
+      ok: true,
+      market,
+      count: candidates.length,
+      liveCount: candidates.filter(x =>
+        x.marketState === "REGULAR"
+      ).length,
+      availableCount: candidates.filter(x =>
+        x.available
+      ).length,
+      source: "yahoo",
+      marketOpen: candidates.some(x =>
+        x.marketState === "REGULAR"
+      ),
+      candidates
+    };
+  }
+
+  try {
+    const requestedMarket =
+      String(req.query?.market || "ALL").toUpperCase();
+
+    if (requestedMarket === "US") {
+      const result = await scanMarket(US_SYMBOLS, "US");
+      return res.status(200).json(result);
+    }
+
+    if (
+      requestedMarket === "MY" ||
+      requestedMarket === "MALAYSIA"
+    ) {
+      const result = await scanMarket(MY_SYMBOLS, "MY");
+      return res.status(200).json(result);
+    }
+
+    // Default = both markets.
+    const [us, my] = await Promise.all([
+      scanMarket(US_SYMBOLS, "US"),
+      scanMarket(MY_SYMBOLS, "MY")
+    ]);
+
+    return res.status(200).json({
+      ok: true,
+      market: "ALL",
+      generatedAt: new Date().toISOString(),
+      US: us,
+      MY: my
+    });
+
+  } catch (error) {
+    console.error("RADAR_ERROR:", error);
 
     return res.status(500).json({
       ok: false,
-      error:
-        e?.message ||
-        "Radar server error"
+      error: "RADAR_FUNCTION_FAILED",
+      message: error?.message || "Unknown server error"
     });
   }
 }
