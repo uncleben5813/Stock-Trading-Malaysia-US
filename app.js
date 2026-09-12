@@ -10,29 +10,48 @@ let rendering = false;
    ========================================================= */
 
 const usFallback = [
-  ["NVDA","NVIDIA","Semiconductors"],["AMD","AMD","Semiconductors"],
-  ["AVGO","Broadcom","Semiconductors"],["TSM","TSMC","Semiconductors"],
-  ["MU","Micron","Semiconductors"],["INTC","Intel","Semiconductors"],
-  ["AAPL","Apple","Technology Hardware"],["MSFT","Microsoft","Software"],
-  ["GOOGL","Alphabet","Internet"],["AMZN","Amazon","Internet"],
-  ["META","Meta","Internet"],["ORCL","Oracle","Software"],
-  ["CRM","Salesforce","Software"],["PLTR","Palantir","Software"],
-  ["NFLX","Netflix","Media"],["TSLA","Tesla","Automobiles"],
-  ["LLY","Eli Lilly","Pharmaceuticals"],["UNH","UnitedHealth","Healthcare"],
-  ["XOM","Exxon Mobil","Energy"],["CVX","Chevron","Energy"],
-  ["JPM","JPMorgan","Banks"],["BAC","Bank of America","Banks"],
-  ["V","Visa","Financial Services"],["MA","Mastercard","Financial Services"],
-  ["WMT","Walmart","Retail"],["COST","Costco","Retail"],
-  ["CAT","Caterpillar","Industrials"],["GE","GE Aerospace","Industrials"],
-  ["RTX","RTX","Aerospace & Defense"],["LIN","Linde","Chemicals"],
-  ["ADBE","Adobe","Software"],["IBM","IBM","IT Services"],
-  ["UBER","Uber","Transport"],["COIN","Coinbase","Financial Services"],
+  ["NVDA","NVIDIA","Semiconductors"],
+  ["AMD","AMD","Semiconductors"],
+  ["AVGO","Broadcom","Semiconductors"],
+  ["TSM","TSMC","Semiconductors"],
+  ["MU","Micron","Semiconductors"],
+  ["INTC","Intel","Semiconductors"],
+  ["AAPL","Apple","Technology Hardware"],
+  ["MSFT","Microsoft","Software"],
+  ["GOOGL","Alphabet","Internet"],
+  ["AMZN","Amazon","Internet"],
+  ["META","Meta","Internet"],
+  ["ORCL","Oracle","Software"],
+  ["CRM","Salesforce","Software"],
+  ["PLTR","Palantir","Software"],
+  ["NFLX","Netflix","Media"],
+  ["TSLA","Tesla","Automobiles"],
+  ["LLY","Eli Lilly","Pharmaceuticals"],
+  ["UNH","UnitedHealth","Healthcare"],
+  ["XOM","Exxon Mobil","Energy"],
+  ["CVX","Chevron","Energy"],
+  ["JPM","JPMorgan","Banks"],
+  ["BAC","Bank of America","Banks"],
+  ["V","Visa","Financial Services"],
+  ["MA","Mastercard","Financial Services"],
+  ["WMT","Walmart","Retail"],
+  ["COST","Costco","Retail"],
+  ["CAT","Caterpillar","Industrials"],
+  ["GE","GE Aerospace","Industrials"],
+  ["RTX","RTX","Aerospace & Defense"],
+  ["LIN","Linde","Chemicals"],
+  ["ADBE","Adobe","Software"],
+  ["IBM","IBM","IT Services"],
+  ["UBER","Uber","Transport"],
+  ["COIN","Coinbase","Financial Services"],
   ["CRWD","CrowdStrike","Cybersecurity"]
 ];
 
 const myFallback = [
-  ["1023.KL","CIMB","Banks"],["1155.KL","Maybank","Banks"],
-  ["1295.KL","Public Bank","Banks"],["5819.KL","Hong Leong Bank","Banks"],
+  ["1023.KL","CIMB","Banks"],
+  ["1155.KL","Maybank","Banks"],
+  ["1295.KL","Public Bank","Banks"],
+  ["5819.KL","Hong Leong Bank","Banks"],
   ["4863.KL","Telekom Malaysia","Telecommunications"],
   ["6012.KL","Maxis","Telecommunications"],
   ["6947.KL","CelcomDigi","Telecommunications"],
@@ -62,10 +81,22 @@ const myFallback = [
 ];
 
 const shariahSeed = {
-  "5347.KL":1,"5398.KL":1,"5211.KL":1,"5285.KL":1,
-  "4197.KL":1,"1961.KL":1,"8869.KL":1,"3816.KL":1,
-  "7089.KL":1,"4677.KL":1,"7084.KL":1,"5225.KL":1,
-  "7153.KL":1,"7113.KL":1,"7086.KL":1,"0166.KL":1,
+  "5347.KL":1,
+  "5398.KL":1,
+  "5211.KL":1,
+  "5285.KL":1,
+  "4197.KL":1,
+  "1961.KL":1,
+  "8869.KL":1,
+  "3816.KL":1,
+  "7089.KL":1,
+  "4677.KL":1,
+  "7084.KL":1,
+  "5225.KL":1,
+  "7153.KL":1,
+  "7113.KL":1,
+  "7086.KL":1,
+  "0166.KL":1,
   "0097.KL":1
 };
 
@@ -74,9 +105,12 @@ const shariahSeed = {
    ========================================================= */
 
 function fmt(n) {
+
   n = Number(n);
 
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) {
+    return "—";
+  }
 
   return n > 100
     ? n.toFixed(2)
@@ -93,17 +127,27 @@ async function radar(market) {
 
     const r = await fetch(
       `/api/radar?market=${encodeURIComponent(market)}`,
-      { cache: "no-store" }
+      {
+        cache: "no-store"
+      }
     );
 
     if (!r.ok) {
-      throw new Error("Radar API HTTP " + r.status);
+      throw new Error(
+        "Radar API HTTP " + r.status
+      );
     }
 
     const j = await r.json();
 
-    if (!j?.ok || !Array.isArray(j.candidates)) {
-      throw new Error("Invalid radar response");
+    if (
+      !j ||
+      !j.ok ||
+      !Array.isArray(j.candidates)
+    ) {
+      throw new Error(
+        "Invalid radar response"
+      );
     }
 
     console.log(
@@ -126,10 +170,13 @@ async function radar(market) {
 }
 
 /* =========================================================
-   NORMALISE RADAR → APP FORMAT
+   NORMALISE RADAR
    ========================================================= */
 
-function normaliseCandidates(candidates, market) {
+function normaliseCandidates(
+  candidates,
+  market
+) {
 
   const fallback =
     market === "US"
@@ -138,38 +185,60 @@ function normaliseCandidates(candidates, market) {
 
   const fallbackMap =
     new Map(
-      fallback.map(x => [x[0], x])
+      fallback.map(
+        x => [x[0], x]
+      )
     );
 
-  if (!candidates.length) {
+  if (
+    !Array.isArray(candidates) ||
+    !candidates.length
+  ) {
     return fallback;
   }
 
-  return candidates.map(x => {
+  return candidates
+    .filter(
+      x =>
+        x &&
+        x.symbol
+    )
+    .map(x => {
 
-    const old =
-      fallbackMap.get(x.symbol);
+      const old =
+        fallbackMap.get(
+          x.symbol
+        );
 
-    return [
-      x.symbol,
+      return [
+        x.symbol,
 
-      x.name ||
-      old?.[1] ||
-      x.symbol,
+        x.name ||
+        old?.[1] ||
+        x.symbol,
 
-      old?.[2] ||
-      inferSector(x.name || x.symbol),
+        old?.[2] ||
+        x.sector ||
+        inferSector(
+          x.name ||
+          x.symbol
+        ),
 
-      {
-        radarPrice: Number(x.price || 0),
-        radarChange: Number(x.change || 0),
-        radarVolume: Number(x.volume || 0),
-        marketCap: Number(x.marketCap || 0)
-      }
-    ];
+        {
+          radarPrice:
+            Number(x.price || 0),
 
-  });
+          radarChange:
+            Number(x.change || 0),
 
+          radarVolume:
+            Number(x.volume || 0),
+
+          marketCap:
+            Number(x.marketCap || 0)
+        }
+      ];
+    });
 }
 
 /* =========================================================
@@ -179,44 +248,67 @@ function normaliseCandidates(candidates, market) {
 function inferSector(name) {
 
   const n =
-    String(name || "").toLowerCase();
+    String(name || "")
+      .toLowerCase();
 
   if (
     n.includes("bank") ||
     n.includes("financial") ||
     n.includes("capital")
-  ) return "Financial Services";
+  ) {
+    return "Financial Services";
+  }
 
   if (
     n.includes("semiconductor") ||
     n.includes("chip")
-  ) return "Semiconductors";
+  ) {
+    return "Semiconductors";
+  }
 
   if (
     n.includes("software") ||
-    n.includes("technology")
-  ) return "Technology";
+    n.includes("technology") ||
+    n.includes("tech")
+  ) {
+    return "Technology";
+  }
 
   if (
     n.includes("energy") ||
     n.includes("oil") ||
     n.includes("gas")
-  ) return "Energy";
+  ) {
+    return "Energy";
+  }
 
   if (
     n.includes("health") ||
     n.includes("pharma")
-  ) return "Healthcare";
+  ) {
+    return "Healthcare";
+  }
 
   if (
     n.includes("retail") ||
     n.includes("consumer")
-  ) return "Consumer";
+  ) {
+    return "Consumer";
+  }
 
   if (
     n.includes("industrial") ||
     n.includes("aerospace")
-  ) return "Industrials";
+  ) {
+    return "Industrials";
+  }
+
+  if (
+    n.includes("telecom") ||
+    n.includes("communication")
+  ) {
+    return "Telecommunications";
+  }
 
   return "Other";
 }
@@ -225,30 +317,55 @@ function inferSector(name) {
    MARKET CANDLES
    ========================================================= */
 
-async function candles(symbol, interval = "1d") {
+async function candles(
+  symbol,
+  interval = "1d"
+) {
 
   try {
 
     const r = await fetch(
-      `/api/market?symbol=${encodeURIComponent(symbol)}&range=6mo&interval=${interval}`,
-      { cache: "no-store" }
+      `/api/market?symbol=${encodeURIComponent(symbol)}&range=6mo&interval=${encodeURIComponent(interval)}`,
+      {
+        cache: "no-store"
+      }
     );
 
-    if (!r.ok) return [];
+    if (!r.ok) {
 
-    const j = await r.json();
+      console.warn(
+        "Market HTTP:",
+        symbol,
+        r.status
+      );
+
+      return [];
+    }
+
+    const j =
+      await r.json();
 
     if (
-      !j?.ok ||
+      !j ||
+      !j.ok ||
       !Array.isArray(j.candles)
     ) {
       return [];
     }
 
     return j.candles.filter(x =>
-      Number.isFinite(Number(x.close)) &&
-      Number.isFinite(Number(x.high)) &&
-      Number.isFinite(Number(x.low))
+
+      Number.isFinite(
+        Number(x.close)
+      ) &&
+
+      Number.isFinite(
+        Number(x.high)
+      ) &&
+
+      Number.isFinite(
+        Number(x.low)
+      )
     );
 
   } catch (e) {
@@ -256,7 +373,7 @@ async function candles(symbol, interval = "1d") {
     console.warn(
       "Market API:",
       symbol,
-      e
+      e.message
     );
 
     return [];
@@ -281,7 +398,10 @@ function sma(values, n) {
 
   if (
     a.some(
-      v => !Number.isFinite(Number(v))
+      v =>
+        !Number.isFinite(
+          Number(v)
+        )
     )
   ) {
     return null;
@@ -321,6 +441,14 @@ function atr(c, n = 14) {
 
     const pc =
       Number(c[i - 1].close);
+
+    if (
+      !Number.isFinite(h) ||
+      !Number.isFinite(l) ||
+      !Number.isFinite(pc)
+    ) {
+      continue;
+    }
 
     tr.push(
       Math.max(
@@ -366,6 +494,7 @@ function rsi(c, n = 14) {
   }
 
   if (losses === 0) {
+
     return gains > 0
       ? 100
       : 50;
@@ -380,7 +509,10 @@ function rsi(c, n = 14) {
   );
 }
 
-function momentum(c, period = 20) {
+function momentum(
+  c,
+  period = 20
+) {
 
   if (
     !c ||
@@ -390,21 +522,32 @@ function momentum(c, period = 20) {
   }
 
   const now =
-    Number(c.at(-1).close);
+    Number(
+      c.at(-1).close
+    );
 
   const old =
     Number(
       c.at(-1 - period).close
     );
 
-  if (!old) return 0;
+  if (
+    !Number.isFinite(now) ||
+    !Number.isFinite(old) ||
+    old === 0
+  ) {
+    return 0;
+  }
 
   return (
     (now / old - 1) * 100
   );
 }
 
-function volumeStrength(c, n = 20) {
+function volumeStrength(
+  c,
+  n = 20
+) {
 
   if (
     !c ||
@@ -417,14 +560,17 @@ function volumeStrength(c, n = 20) {
     c
       .slice(-(n + 1), -1)
       .map(
-        x => Number(x.volume)
+        x =>
+          Number(x.volume)
       )
       .filter(
         Number.isFinite
       );
 
   const latest =
-    Number(c.at(-1).volume);
+    Number(
+      c.at(-1).volume
+    );
 
   if (
     !volumes.length ||
@@ -439,7 +585,9 @@ function volumeStrength(c, n = 20) {
       0
     ) / volumes.length;
 
-  if (!avg) return 0;
+  if (!avg) {
+    return 0;
+  }
 
   return latest / avg;
 }
@@ -459,7 +607,8 @@ function technicalScore(c) {
 
   const closes =
     c.map(
-      x => Number(x.close)
+      x =>
+        Number(x.close)
     );
 
   const price =
@@ -490,22 +639,25 @@ function technicalScore(c) {
 
   let score = 50;
 
-  /* Trend */
+  /* TREND */
 
-  if (price > ma20)
+  if (price > ma20) {
     score += 8;
-  else
+  } else {
     score -= 8;
+  }
 
-  if (price > ma50)
+  if (price > ma50) {
     score += 10;
-  else
+  } else {
     score -= 10;
+  }
 
-  if (ma20 > ma50)
+  if (ma20 > ma50) {
     score += 8;
-  else
+  } else {
     score -= 8;
+  }
 
   /* RSI */
 
@@ -514,44 +666,56 @@ function technicalScore(c) {
     r <= 70
   ) {
     score += 8;
+
   } else if (
     r >= 45 &&
     r < 55
   ) {
     score += 2;
+
   } else if (
     r < 40
   ) {
     score -= 7;
+
   } else if (
     r > 75
   ) {
     score -= 4;
   }
 
-  /* Momentum */
+  /* MOMENTUM */
 
-  if (mom > 8)
+  if (mom > 8) {
     score += 10;
-  else if (mom > 3)
+
+  } else if (mom > 3) {
     score += 7;
-  else if (mom > 0)
+
+  } else if (mom > 0) {
     score += 3;
-  else if (mom < -8)
+
+  } else if (mom < -8) {
     score -= 10;
-  else if (mom < -3)
+
+  } else if (mom < -3) {
     score -= 7;
-  else
+
+  } else {
     score -= 3;
+  }
 
-  /* Volume */
+  /* VOLUME */
 
-  if (vol >= 1.5)
+  if (vol >= 1.5) {
     score += 6;
-  else if (vol >= 1.15)
+
+  } else if (vol >= 1.15) {
     score += 3;
-  else if (vol < 0.7)
+
+  } else if (vol < 0.7) {
     score -= 3;
+  }
 
   return Math.max(
     0,
@@ -590,11 +754,14 @@ function setup(c) {
   }
 
   const price =
-    Number(c.at(-1).close);
+    Number(
+      c.at(-1).close
+    );
 
   const closes =
     c.map(
-      x => Number(x.close)
+      x =>
+        Number(x.close)
     );
 
   const ma20 =
@@ -629,11 +796,13 @@ function setup(c) {
     r <= 48 &&
     mom < 0;
 
-  if (bullish)
+  if (bullish) {
     dir = "BUY";
+  }
 
-  if (bearish)
+  if (bearish) {
     dir = "SELL";
+  }
 
   if (
     technicalScore(c) < 58
@@ -728,9 +897,12 @@ async function analyze(item) {
   return {
     ...item,
     c,
-    score: technicalScore(c),
-    set: setup(c),
-    radar: item[3] || {}
+    score:
+      technicalScore(c),
+    set:
+      setup(c),
+    radar:
+      item[3] || {}
   };
 }
 
@@ -739,8 +911,8 @@ async function analyzeAll(list) {
   const results = [];
 
   /*
-    Batch 5.
-    Kekalkan supaya API tidak dibom.
+    Process 5 counters at a time
+    to reduce API pressure.
   */
 
   for (
@@ -750,14 +922,19 @@ async function analyzeAll(list) {
   ) {
 
     const batch =
-      list.slice(i, i + 5);
+      list.slice(
+        i,
+        i + 5
+      );
 
     const rows =
       await Promise.all(
         batch.map(analyze)
       );
 
-    results.push(...rows);
+    results.push(
+      ...rows
+    );
   }
 
   return results;
@@ -771,33 +948,42 @@ function sectorRanking(results) {
 
   const groups = {};
 
-  for (const x of results) {
+  for (
+    const x of results
+  ) {
 
     const sector =
-      x[2] || "Other";
+      x[2] ||
+      "Other";
 
     if (!groups[sector]) {
       groups[sector] = [];
     }
 
     if (x.score > 0) {
-      groups[sector].push(x.score);
+      groups[sector].push(
+        x.score
+      );
     }
   }
 
-  return Object.entries(groups)
+  return Object.entries(
+    groups
+  )
     .filter(
       ([, values]) =>
         values.length
     )
     .map(
       ([name, values]) => ({
+
         name,
 
         score:
           Math.round(
             values.reduce(
-              (a, b) => a + b,
+              (a, b) =>
+                a + b,
               0
             ) /
             values.length
@@ -809,7 +995,8 @@ function sectorRanking(results) {
     )
     .sort(
       (a, b) =>
-        b.score - a.score
+        b.score -
+        a.score
     );
 }
 
@@ -822,16 +1009,21 @@ function renderSectors(
   sectors
 ) {
 
-  const el = $(id);
+  const el =
+    $(id);
 
-  if (!el) return;
+  if (!el) {
+    return;
+  }
 
   if (!sectors.length) {
 
     el.innerHTML =
-      `<div class="muted">
-        No market data.
-      </div>`;
+      `
+        <div class="muted">
+          No market data.
+        </div>
+      `;
 
     return;
   }
@@ -841,6 +1033,7 @@ function renderSectors(
       .slice(0, 10)
       .map(
         (s, i) => `
+
           <div class="sector">
 
             <b>#${i + 1}</b>
@@ -850,7 +1043,13 @@ function renderSectors(
 
               <div class="bar">
                 <i
-                  style="width:${s.score}%"
+                  style="width:${Math.min(
+                    100,
+                    Math.max(
+                      0,
+                      s.score
+                    )
+                  )}%"
                 ></i>
               </div>
             </span>
@@ -858,6 +1057,7 @@ function renderSectors(
             <b>${s.score}</b>
 
           </div>
+
         `
       )
       .join("");
@@ -871,7 +1071,9 @@ function focusRanking(results) {
 
   return results
     .filter(
-      x => x.c?.length
+      x =>
+        x.c &&
+        x.c.length
     )
     .sort(
       (a, b) => {
@@ -881,10 +1083,6 @@ function focusRanking(results) {
 
         let sb =
           b.score;
-
-        /*
-          Radar live change
-        */
 
         const ac =
           Number(
@@ -898,21 +1096,15 @@ function focusRanking(results) {
             0
           );
 
-        sa +=
-          Math.min(
-            Math.abs(ac) * 1.5,
-            10
-          );
+        sa += Math.min(
+          Math.abs(ac) * 1.5,
+          10
+        );
 
-        sb +=
-          Math.min(
-            Math.abs(bc) * 1.5,
-            10
-          );
-
-        /*
-          Signal bonus
-        */
+        sb += Math.min(
+          Math.abs(bc) * 1.5,
+          10
+        );
 
         if (
           a.set.dir === "BUY" ||
@@ -928,30 +1120,27 @@ function focusRanking(results) {
           sb += 5;
         }
 
-        /*
-          Momentum
-        */
+        sa += Math.min(
+          Math.abs(
+            a.set.momentum || 0
+          ),
+          10
+        );
 
-        sa +=
-          Math.min(
-            Math.abs(
-              a.set.momentum || 0
-            ),
-            10
-          );
-
-        sb +=
-          Math.min(
-            Math.abs(
-              b.set.momentum || 0
-            ),
-            10
-          );
+        sb += Math.min(
+          Math.abs(
+            b.set.momentum || 0
+          ),
+          10
+        );
 
         return sb - sa;
       }
     )
-    .slice(0, 12);
+    .slice(
+      0,
+      12
+    );
 }
 
 /* =========================================================
@@ -963,14 +1152,18 @@ function renderFocus(focus) {
   const el =
     $("#focus");
 
-  if (!el) return;
+  if (!el) {
+    return;
+  }
 
   if (!focus.length) {
 
     el.innerHTML =
-      `<div class="muted">
-        No counters available.
-      </div>`;
+      `
+        <div class="muted">
+          No counters available.
+        </div>
+      `;
 
     return;
   }
@@ -1043,6 +1236,7 @@ function renderFocus(focus) {
               </span>
 
             </div>
+
           `;
         }
       )
@@ -1052,28 +1246,31 @@ function renderFocus(focus) {
     .querySelectorAll(
       ".focusrow"
     )
-    .forEach(el => {
+    .forEach(
+      el => {
 
-      el.onclick = () => {
+        el.onclick =
+          async () => {
 
-        const symbol =
-          el.dataset.symbol;
+            const symbol =
+              el.dataset.symbol;
 
-        const item =
-          focus.find(
-            x =>
-              x[0] === symbol
-          );
+            const item =
+              focus.find(
+                x =>
+                  x[0] === symbol
+              );
 
-        if (item) {
-          openCounter(
-            symbol,
-            item
-          );
-        }
-      };
+            if (item) {
 
-    });
+              await openCounter(
+                symbol,
+                item
+              );
+            }
+          };
+      }
+    );
 }
 
 /* =========================================================
@@ -1082,8 +1279,9 @@ function renderFocus(focus) {
 
 async function render() {
 
-  if (rendering)
+  if (rendering) {
     return;
+  }
 
   rendering = true;
 
@@ -1096,16 +1294,14 @@ async function render() {
     }
 
     /*
-      1. Ambil candidate LIVE
-      daripada /api/radar.js
+      1. LIVE RADAR
     */
 
     const candidates =
       await radar(mode);
 
     /*
-      2. Kalau radar kosong,
-      guna fallback universe.
+      2. FALLBACK IF RADAR FAILS
     */
 
     const list =
@@ -1115,18 +1311,22 @@ async function render() {
       );
 
     /*
-      3. Technical analysis
+      3. TECHNICAL ANALYSIS
     */
 
     const ranked =
-      await analyzeAll(list);
+      await analyzeAll(
+        list
+      );
 
     /*
-      4. Sector ranking
+      4. SECTOR RANKING
     */
 
     const sectors =
-      sectorRanking(ranked);
+      sectorRanking(
+        ranked
+      );
 
     renderSectors(
       mode === "US"
@@ -1136,7 +1336,7 @@ async function render() {
     );
 
     /*
-      5. Market mood
+      5. MARKET MOOD
     */
 
     if (
@@ -1160,16 +1360,20 @@ async function render() {
     }
 
     /*
-      6. Counter focus
+      6. COUNTER FOCUS
     */
 
     const focus =
-      focusRanking(ranked);
+      focusRanking(
+        ranked
+      );
 
-    renderFocus(focus);
+    renderFocus(
+      focus
+    );
 
     /*
-      7. Auto-open #1
+      7. AUTO OPEN #1
     */
 
     if (focus[0]) {
@@ -1221,7 +1425,9 @@ async function openCounter(
     const c =
       x.c?.length
         ? x.c
-        : await candles(symbol);
+        : await candles(
+            symbol
+          );
 
     if (!c.length) {
 
@@ -1263,9 +1469,7 @@ async function openCounter(
           : "US: CHECK SCREEN";
     }
 
-    /*
-      TRADE BOX
-    */
+    /* TRADE BOX */
 
     if ($("#tradeBox")) {
 
@@ -1283,14 +1487,15 @@ async function openCounter(
 
         [
           "TP1 / TP2 / TP3",
+
           s.dir === "WAIT"
             ? "—"
-            :
-              `${fmt(s.tp1)} / ${fmt(s.tp2)} / ${fmt(s.tp3)}`
+            : `${fmt(s.tp1)} / ${fmt(s.tp2)} / ${fmt(s.tp3)}`
         ],
 
         [
           "Stop loss",
+
           s.dir === "WAIT"
             ? "—"
             : fmt(s.sl)
@@ -1298,6 +1503,7 @@ async function openCounter(
 
         [
           "Risk / Reward",
+
           s.dir === "WAIT"
             ? "—"
             : "1 : 1 / 1 : 1.5 / 1 : 2.2"
@@ -1306,6 +1512,7 @@ async function openCounter(
       ]
         .map(
           a => `
+
             <div class="metric">
 
               <small>
@@ -1317,14 +1524,13 @@ async function openCounter(
               </b>
 
             </div>
+
           `
         )
         .join("");
     }
 
-    /*
-      TECHNICAL
-    */
+    /* TECHNICAL */
 
     if ($("#technical")) {
 
@@ -1370,24 +1576,20 @@ async function openCounter(
           <div class="line">
             <span>Radar change</span>
             <b>
-              ${
-                Number(
-                  x.radar?.radarChange ||
-                  0
-                ).toFixed(2)
-              }%
+              ${Number(
+                x.radar?.radarChange ||
+                0
+              ).toFixed(2)}%
             </b>
           </div>
 
           <div class="line">
             <span>Radar volume</span>
             <b>
-              ${
-                Number(
-                  x.radar?.radarVolume ||
-                  0
-                ).toLocaleString()
-              }
+              ${Number(
+                x.radar?.radarVolume ||
+                0
+              ).toLocaleString()}
             </b>
           </div>
 
@@ -1402,13 +1604,12 @@ async function openCounter(
       `;
     }
 
-    /*
-      FUNDAMENTAL / RADAR
-    */
+    /* FUNDAMENTAL / RADAR */
 
     const latest =
       Number(
-        c.at(-1)?.close || 0
+        c.at(-1)?.close ||
+        0
       );
 
     const base =
@@ -1514,31 +1715,31 @@ async function openCounter(
       `;
     }
 
-    /*
-      CHART
-    */
+    /* CHART */
 
     draw(
       c,
       symbol
     );
 
-    /*
-      COMPANY DOCUMENTS
-    */
+    /* COMPANY DOCUMENTS */
 
     try {
 
       const r =
         await fetch(
           `/api/company?symbol=${encodeURIComponent(symbol)}`,
-          { cache: "no-store" }
+          {
+            cache: "no-store"
+          }
         );
 
-      if (!r.ok)
+      if (!r.ok) {
         throw new Error(
-          "Company API"
+          "Company API HTTP " +
+          r.status
         );
+      }
 
       const j =
         await r.json();
@@ -1562,15 +1763,28 @@ async function openCounter(
             )
             .join("")
           ||
-          "<span class='muted'>No documents returned.</span>";
+          `
+            <span class="muted">
+              No documents returned.
+            </span>
+          `;
       }
 
-    } catch {
+    } catch (e) {
+
+      console.warn(
+        "Company API:",
+        e.message
+      );
 
       if ($("#docs")) {
 
         $("#docs").innerHTML =
-          "<span class='muted'>Company data unavailable.</span>";
+          `
+            <span class="muted">
+              Company data unavailable.
+            </span>
+          `;
       }
     }
 
@@ -1596,7 +1810,20 @@ function draw(
   const canvas =
     $("#chart");
 
-  if (!canvas) return;
+  if (!canvas) {
+    return;
+  }
+
+  if (
+    typeof Chart === "undefined"
+  ) {
+
+    console.error(
+      "Chart.js is not loaded."
+    );
+
+    return;
+  }
 
   if (chart) {
 
@@ -1609,9 +1836,17 @@ function draw(
 
   const labels =
     data.map(
-      x =>
-        new Date(x.time)
-          .toLocaleDateString()
+      x => {
+
+        const d =
+          new Date(x.time);
+
+        return Number.isNaN(
+          d.getTime()
+        )
+          ? ""
+          : d.toLocaleDateString();
+      }
     );
 
   const prices =
@@ -1631,13 +1866,19 @@ function draw(
           labels,
 
           datasets: [
+
             {
               label: symbol,
+
               data: prices,
+
               borderWidth: 2,
+
               pointRadius: 0,
+
               tension: 0.2
             }
+
           ]
         },
 
@@ -1688,7 +1929,9 @@ document
         async () => {
 
           document
-            .querySelectorAll(".tab")
+            .querySelectorAll(
+              ".tab"
+            )
             .forEach(
               x =>
                 x.classList.remove(
@@ -1716,7 +1959,10 @@ document
 if ($("#refresh")) {
 
   $("#refresh").onclick =
-    render;
+    async () => {
+
+      await render();
+    };
 }
 
 /* =========================================================
