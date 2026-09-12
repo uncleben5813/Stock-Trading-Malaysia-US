@@ -1,10 +1,33 @@
 // api/radar.js
-// Vercel Serverless - US + Malaysia Stock Radar
-// Safe mode: sequential batches, latest available data when market is closed.
+// US + Malaysia Stock Radar
+// Sector Ranking + Counter Ranking + Focus List
+// Source: Yahoo Finance
+//
+// API:
+// /api/radar?market=US
+// /api/radar?market=MY
+// /api/radar
+//
+// Output:
+// - sectorRanking
+// - focusList
+// - candidates
+// - market status
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader(
+    "Cache-Control",
+    "s-maxage=60, stale-while-revalidate=120"
+  );
+
+  res.setHeader(
+    "Content-Type",
+    "application/json; charset=utf-8"
+  );
+
+  // =========================================================
+  // SYMBOL LIST
+  // =========================================================
 
   const US_SYMBOLS = [
     "KHC","SMR","INTC","NOK","SPCX","ORCL","NVDA","NU","AAL","BMNR",
@@ -28,21 +51,211 @@ export default async function handler(req, res) {
     "0166.KL","0097.KL","5285.KL","4065.KL","2445.KL"
   ];
 
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // =========================================================
+  // SECTOR MAP
+  // =========================================================
 
-  function safeNumber(v) {
+  const SECTORS = {
+
+    // Technology
+    AAPL: "Technology",
+    MSFT: "Technology",
+    NVDA: "Technology",
+    AMD: "Technology",
+    AVGO: "Technology",
+    ORCL: "Technology",
+    INTC: "Technology",
+    CSCO: "Technology",
+    DELL: "Technology",
+    HPQ: "Technology",
+    HPE: "Technology",
+    SMCI: "Technology",
+    MRVL: "Technology",
+    MU: "Technology",
+    PLTR: "Technology",
+    CRWV: "Technology",
+    PATH: "Technology",
+    TENB: "Technology",
+    CCC: "Technology",
+    NOK: "Technology",
+    ERIC: "Technology",
+    SKHY: "Technology",
+
+    // Semiconductors
+    IONQ: "Semiconductors",
+    RGTI: "Semiconductors",
+
+    // Communication
+    GOOGL: "Communication",
+    META: "Communication",
+    SNAP: "Communication",
+    T: "Communication",
+    VZ: "Communication",
+    CMCSA: "Communication",
+    PINS: "Communication",
+
+    // Consumer
+    AMZN: "Consumer",
+    WMT: "Consumer",
+    NKE: "Consumer",
+    CAG: "Consumer",
+    KHC: "Consumer",
+    AAL: "Consumer",
+    CCL: "Consumer",
+    NCLH: "Consumer",
+    AMC: "Consumer",
+
+    // Automotive
+    TSLA: "Automotive",
+    RIVN: "Automotive",
+    STLA: "Automotive",
+
+    // Financial
+    BAC: "Financial",
+    HOOD: "Financial",
+    SOFI: "Financial",
+    NU: "Financial",
+    HDB: "Financial",
+    ITUB: "Financial",
+    BBD: "Financial",
+    HBAN: "Financial",
+    AGNC: "Financial",
+    OWL: "Financial",
+
+    // Energy
+    PLUG: "Energy",
+    PCG: "Energy",
+    IREN: "Energy",
+    WULF: "Energy",
+    MARA: "Energy",
+    CLSK: "Energy",
+    RIG: "Energy",
+    PBR: "Energy",
+    VALE: "Energy",
+    CNH: "Energy",
+
+    // Nuclear
+    SMR: "Nuclear",
+    OKLO: "Nuclear",
+
+    // Uranium / Mining
+    DNN: "Mining",
+    HL: "Mining",
+    CDE: "Mining",
+    BTG: "Mining",
+    GGB: "Mining",
+    USAR: "Mining",
+
+    // Aerospace
+    RKLB: "Aerospace",
+    JOBY: "Aerospace",
+    ACHR: "Aerospace",
+    AUR: "Aerospace",
+    SPCX: "Aerospace",
+
+    // Healthcare
+    MRNA: "Healthcare",
+    PFE: "Healthcare",
+    BSX: "Healthcare",
+    SLS: "Healthcare",
+
+    // Real Estate
+    OPEN: "Real Estate",
+    RKT: "Real Estate",
+
+    // Internet / Software
+    UBER: "Internet",
+    GRAB: "Internet",
+
+    // Other
+    LUMN: "Telecom",
+    KVUE: "Consumer",
+    AB​​EV: "Consumer",
+    LYG: "Financial",
+    VG: "Energy",
+    PURR: "Crypto",
+    MSTR: "Crypto",
+    BMNR: "Crypto",
+    CIFR: "Crypto",
+    MARA: "Crypto",
+    RGTI: "Technology",
+    ONDS: "Technology",
+    KEEL: "Infrastructure",
+    PATH: "Technology",
+    PINS: "Communication",
+    CPRT: "Industrial",
+    F: "Automotive",
+    ABEV: "Consumer",
+    NIO: "Automotive",
+    NIO: "Automotive",
+    VALE: "Mining",
+    PBR: "Energy",
+
+    // Malaysia
+    "1023.KL": "Financial",
+    "1155.KL": "Financial",
+    "1295.KL": "Financial",
+    "5819.KL": "Financial",
+    "4863.KL": "Technology",
+    "6012.KL": "Financial",
+    "6947.KL": "Technology",
+    "3042.KL": "Technology",
+    "7089.KL": "Consumer",
+    "4677.KL": "Plantation",
+    "5183.KL": "Industrial",
+    "5681.KL": "Plantation",
+    "5347.KL": "Financial",
+    "5398.KL": "Industrial",
+    "5211.KL": "Utilities",
+    "4197.KL": "Plantation",
+    "1961.KL": "Industrial",
+    "8869.KL": "Healthcare",
+    "3816.KL": "Energy",
+    "4707.KL": "Technology",
+    "7084.KL": "Consumer",
+    "5225.KL": "Construction",
+    "7153.KL": "Technology",
+    "7113.KL": "Industrial",
+    "7086.KL": "Financial",
+    "0166.KL": "Technology",
+    "0097.KL": "Industrial",
+    "5285.KL": "Financial",
+    "4065.KL": "Consumer",
+    "2445.KL": "Technology"
+  };
+
+  // =========================================================
+  // HELPERS
+  // =========================================================
+
+  const sleep = ms =>
+    new Promise(resolve => setTimeout(resolve, ms));
+
+  function number(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
   }
 
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function sectorOf(symbol) {
+    return SECTORS[symbol] || "Other";
+  }
+
   function changePercent(price, previousClose) {
-    price = safeNumber(price);
-    previousClose = safeNumber(previousClose);
+    price = number(price);
+    previousClose = number(previousClose);
 
     if (!price || !previousClose) return 0;
 
     return ((price - previousClose) / previousClose) * 100;
   }
+
+  // =========================================================
+  // YAHOO
+  // =========================================================
 
   async function getYahoo(symbol) {
     const url =
@@ -52,14 +265,20 @@ export default async function handler(req, res) {
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 7000);
+
+      const timeout = setTimeout(
+        () => controller.abort(),
+        7000
+      );
 
       const response = await fetch(url, {
         method: "GET",
+
         headers: {
           "User-Agent": "Mozilla/5.0",
           "Accept": "application/json"
         },
+
         signal: controller.signal
       });
 
@@ -71,85 +290,143 @@ export default async function handler(req, res) {
 
       const json = await response.json();
 
-      const result = json?.chart?.result?.[0];
+      const result =
+        json?.chart?.result?.[0];
 
       if (!result) {
         return null;
       }
 
-      const meta = result.meta || {};
-      const quote = result.indicators?.quote?.[0] || {};
+      const meta =
+        result.meta || {};
 
-      const closes = Array.isArray(quote.close)
-        ? quote.close.filter(v => Number.isFinite(Number(v)))
-        : [];
+      const quote =
+        result.indicators?.quote?.[0] || {};
 
-      const volumes = Array.isArray(quote.volume)
-        ? quote.volume.filter(v => Number.isFinite(Number(v)))
-        : [];
+      const closes =
+        Array.isArray(quote.close)
+          ? quote.close
+              .map(number)
+              .filter(v => v > 0)
+          : [];
 
-      // IMPORTANT:
-      // When market is closed, regularMarketPrice can still contain
-      // the latest traded price.
-      let price = safeNumber(meta.regularMarketPrice);
+      const volumes =
+        Array.isArray(quote.volume)
+          ? quote.volume
+              .map(number)
+              .filter(v => v > 0)
+          : [];
+
+      let price =
+        number(meta.regularMarketPrice);
 
       if (!price && closes.length) {
-        price = safeNumber(closes[closes.length - 1]);
+        price =
+          closes[closes.length - 1];
       }
 
-      let previousClose = safeNumber(meta.previousClose);
+      let previousClose =
+        number(meta.previousClose);
 
-      // If previousClose is unavailable, calculate from last 2 candles.
       if (!previousClose && closes.length >= 2) {
-        previousClose = safeNumber(closes[closes.length - 2]);
+        previousClose =
+          closes[closes.length - 2];
       }
 
-      let volume = safeNumber(meta.regularMarketVolume);
+      let volume =
+        number(meta.regularMarketVolume);
 
       if (!volume && volumes.length) {
-        volume = safeNumber(volumes[volumes.length - 1]);
+        volume =
+          volumes[volumes.length - 1];
       }
 
-      const marketTime = meta.regularMarketTime
-        ? new Date(meta.regularMarketTime * 1000).toISOString()
-        : null;
+      const change =
+        changePercent(
+          price,
+          previousClose
+        );
 
-      const marketState = meta.marketState || "CLOSED";
-
-      const change = changePercent(price, previousClose);
+      const marketTime =
+        meta.regularMarketTime
+          ? new Date(
+              meta.regularMarketTime * 1000
+            ).toISOString()
+          : null;
 
       return {
         symbol,
-        name: meta.longName || meta.shortName || symbol,
+
+        name:
+          meta.longName ||
+          meta.shortName ||
+          symbol,
+
         price,
+
         previousClose,
+
         change,
+
         volume,
-        marketCap: safeNumber(meta.marketCap),
-        currency: meta.currency || null,
-        exchange: meta.exchangeName || null,
-        marketState,
+
+        marketCap:
+          number(meta.marketCap),
+
+        currency:
+          meta.currency || null,
+
+        exchange:
+          meta.exchangeName || null,
+
+        marketState:
+          meta.marketState || "CLOSED",
+
         marketTime,
-        available: price > 0
+
+        sector:
+          sectorOf(symbol),
+
+        available:
+          price > 0
       };
 
-    } catch (error) {
+    } catch {
       return null;
     }
   }
 
-  async function scanMarket(symbols, market) {
+  // =========================================================
+  // SCAN MARKET
+  // =========================================================
+
+  async function scanMarket(
+    symbols,
+    market
+  ) {
     const candidates = [];
 
-    // Small batches prevent Vercel from being overloaded.
     const BATCH_SIZE = 5;
 
-    for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
-      const batch = symbols.slice(i, i + BATCH_SIZE);
+    for (
+      let i = 0;
+      i < symbols.length;
+      i += BATCH_SIZE
+    ) {
 
-      const results = await Promise.all(
-        batch.map(symbol => getYahoo(symbol))
-      );
+      const batch =
+        symbols.slice(
+          i,
+          i + BATCH_SIZE
+        );
+
+      const results =
+        await Promise.all(
+          batch.map(
+            symbol =>
+              getYahoo(symbol)
+          )
+        );
 
       for (const item of results) {
         if (item) {
@@ -157,80 +434,552 @@ export default async function handler(req, res) {
         }
       }
 
-      // Small pause between batches.
-      if (i + BATCH_SIZE < symbols.length) {
+      if (
+        i + BATCH_SIZE <
+        symbols.length
+      ) {
         await sleep(100);
       }
     }
 
-    // Sort by absolute movement first.
-    candidates.sort((a, b) => {
-      const moveA = Math.abs(safeNumber(a.change));
-      const moveB = Math.abs(safeNumber(b.change));
+    // =======================================================
+    // VOLUME NORMALIZATION
+    // =======================================================
 
-      if (moveB !== moveA) {
-        return moveB - moveA;
+    const volumes =
+      candidates
+        .map(x => number(x.volume))
+        .filter(v => v > 0);
+
+    const maxVolume =
+      volumes.length
+        ? Math.max(...volumes)
+        : 1;
+
+    // =======================================================
+    // COUNTER SCORE
+    // =======================================================
+
+    for (const item of candidates) {
+
+      const movement =
+        Math.abs(
+          number(item.change)
+        );
+
+      const directionScore =
+        item.change > 0
+          ? clamp(
+              item.change * 5,
+              0,
+              40
+            )
+          : clamp(
+              Math.abs(item.change) * 3,
+              0,
+              25
+            );
+
+      const volumeScore =
+        maxVolume > 0
+          ? clamp(
+              (item.volume /
+                maxVolume) *
+                30,
+              0,
+              30
+            )
+          : 0;
+
+      const movementScore =
+        clamp(
+          movement * 3,
+          0,
+          30
+        );
+
+      const liquidityBonus =
+        item.volume >= 10000000
+          ? 10
+          : item.volume >= 5000000
+            ? 7
+            : item.volume >= 1000000
+              ? 4
+              : 0;
+
+      item.momentumScore =
+        Math.round(
+          clamp(
+            movementScore +
+            volumeScore +
+            directionScore +
+            liquidityBonus,
+            0,
+            100
+          )
+        );
+
+      item.direction =
+        item.change > 0.25
+          ? "BULLISH"
+          : item.change < -0.25
+            ? "BEARISH"
+            : "NEUTRAL";
+
+      item.movement =
+        Math.round(
+          movement * 100
+        ) / 100;
+    }
+
+    // =======================================================
+    // SECTOR GROUPING
+    // =======================================================
+
+    const sectorMap = {};
+
+    for (const item of candidates) {
+
+      const sector =
+        item.sector || "Other";
+
+      if (!sectorMap[sector]) {
+        sectorMap[sector] = [];
       }
 
-      return safeNumber(b.volume) - safeNumber(a.volume);
-    });
+      sectorMap[sector].push(item);
+    }
+
+    // =======================================================
+    // SECTOR SCORE
+    // =======================================================
+
+    const sectorRanking =
+      Object.entries(
+        sectorMap
+      )
+        .map(
+          ([sector, stocks]) => {
+
+            const valid =
+              stocks.filter(
+                x => x.available
+              );
+
+            if (!valid.length) {
+              return null;
+            }
+
+            const avgChange =
+              valid.reduce(
+                (sum, x) =>
+                  sum +
+                  number(x.change),
+                0
+              ) / valid.length;
+
+            const bullish =
+              valid.filter(
+                x =>
+                  x.direction ===
+                  "BULLISH"
+              ).length;
+
+            const bearish =
+              valid.filter(
+                x =>
+                  x.direction ===
+                  "BEARISH"
+              ).length;
+
+            const total =
+              valid.length;
+
+            const breadth =
+              total
+                ? ((bullish -
+                    bearish) /
+                    total) *
+                  100
+                : 0;
+
+            const avgMomentum =
+              valid.reduce(
+                (sum, x) =>
+                  sum +
+                  number(
+                    x.momentumScore
+                  ),
+                0
+              ) / total;
+
+            const sectorScore =
+              clamp(
+                avgMomentum * 0.55 +
+                clamp(
+                  avgChange * 4,
+                  -25,
+                  25
+                ) +
+                clamp(
+                  breadth * 0.20,
+                  -20,
+                  20
+                ),
+                0,
+                100
+              );
+
+            const sorted =
+              [...valid].sort(
+                (a, b) =>
+                  b.momentumScore -
+                  a.momentumScore
+              );
+
+            return {
+              rank: 0,
+
+              sector,
+
+              score:
+                Math.round(
+                  sectorScore
+                ),
+
+              averageChange:
+                Math.round(
+                  avgChange * 100
+                ) / 100,
+
+              breadth:
+                Math.round(
+                  breadth
+                ),
+
+              bullish,
+
+              bearish,
+
+              stockCount:
+                total,
+
+              topCounters:
+                sorted
+                  .slice(0, 5)
+                  .map(x => ({
+                    symbol:
+                      x.symbol,
+
+                    name:
+                      x.name,
+
+                    price:
+                      x.price,
+
+                    change:
+                      x.change,
+
+                    volume:
+                      x.volume,
+
+                    momentumScore:
+                      x.momentumScore,
+
+                    direction:
+                      x.direction
+                  }))
+            };
+          }
+        )
+        .filter(Boolean)
+        .sort(
+          (a, b) =>
+            b.score -
+            a.score
+        );
+
+    sectorRanking.forEach(
+      (sector, index) => {
+        sector.rank =
+          index + 1;
+      }
+    );
+
+    // =======================================================
+    // FOCUS LIST
+    // =======================================================
+
+    const sectorRankMap =
+      {};
+
+    sectorRanking.forEach(
+      sector => {
+        sectorRankMap[
+          sector.sector
+        ] =
+          sector.rank;
+      }
+    );
+
+    const focusList =
+      candidates
+        .filter(
+          x => x.available
+        )
+        .map(x => {
+
+          const sectorRank =
+            sectorRankMap[
+              x.sector
+            ] || 999;
+
+          const sectorScore =
+            sectorRanking.find(
+              s =>
+                s.sector ===
+                x.sector
+            )?.score || 0;
+
+          const focusScore =
+            clamp(
+              x.momentumScore * 0.65 +
+              sectorScore * 0.35 -
+              Math.max(
+                sectorRank - 5,
+                0
+              ) *
+                2,
+              0,
+              100
+            );
+
+          return {
+            ...x,
+
+            sectorRank,
+
+            sectorScore,
+
+            focusScore:
+              Math.round(
+                focusScore
+              ),
+
+            priority:
+              sectorRank <= 3 &&
+              x.momentumScore >= 45
+                ? "HIGH"
+                : sectorRank <= 6 &&
+                    x.momentumScore >= 35
+                  ? "MEDIUM"
+                  : "LOW"
+          };
+        })
+        .sort(
+          (a, b) =>
+            b.focusScore -
+            a.focusScore
+        )
+        .slice(0, 15);
+
+    // =======================================================
+    // GENERAL CANDIDATE SORT
+    // =======================================================
+
+    candidates.sort(
+      (a, b) => {
+
+        if (
+          b.momentumScore !==
+          a.momentumScore
+        ) {
+          return (
+            b.momentumScore -
+            a.momentumScore
+          );
+        }
+
+        return (
+          Math.abs(
+            b.change
+          ) -
+          Math.abs(
+            a.change
+          )
+        );
+      }
+    );
+
+    // =======================================================
+    // MARKET STATE
+    // =======================================================
+
+    const liveCount =
+      candidates.filter(
+        x =>
+          x.marketState ===
+          "REGULAR"
+      ).length;
+
+    const availableCount =
+      candidates.filter(
+        x =>
+          x.available
+      ).length;
 
     return {
       ok: true,
+
       market,
-      count: candidates.length,
-      liveCount: candidates.filter(x =>
-        x.marketState === "REGULAR"
-      ).length,
-      availableCount: candidates.filter(x =>
-        x.available
-      ).length,
-      source: "yahoo",
-      marketOpen: candidates.some(x =>
-        x.marketState === "REGULAR"
-      ),
+
+      count:
+        candidates.length,
+
+      liveCount,
+
+      availableCount,
+
+      source:
+        "yahoo",
+
+      marketOpen:
+        liveCount > 0,
+
+      sectorCount:
+        sectorRanking.length,
+
+      sectorRanking,
+
+      focusList,
+
       candidates
     };
   }
 
-  try {
-    const requestedMarket =
-      String(req.query?.market || "ALL").toUpperCase();
+  // =========================================================
+  // REQUEST
+  // =========================================================
 
-    if (requestedMarket === "US") {
-      const result = await scanMarket(US_SYMBOLS, "US");
-      return res.status(200).json(result);
-    }
+  try {
+
+    const requestedMarket =
+      String(
+        req.query?.market ||
+        "ALL"
+      ).toUpperCase();
+
+    // -------------------------
+    // US
+    // -------------------------
 
     if (
-      requestedMarket === "MY" ||
-      requestedMarket === "MALAYSIA"
+      requestedMarket ===
+      "US"
     ) {
-      const result = await scanMarket(MY_SYMBOLS, "MY");
-      return res.status(200).json(result);
+
+      const result =
+        await scanMarket(
+          US_SYMBOLS,
+          "US"
+        );
+
+      return res
+        .status(200)
+        .json(result);
     }
 
-    // Default = both markets.
-    const [us, my] = await Promise.all([
-      scanMarket(US_SYMBOLS, "US"),
-      scanMarket(MY_SYMBOLS, "MY")
-    ]);
+    // -------------------------
+    // MALAYSIA
+    // -------------------------
 
-    return res.status(200).json({
-      ok: true,
-      market: "ALL",
-      generatedAt: new Date().toISOString(),
-      US: us,
-      MY: my
-    });
+    if (
+      requestedMarket ===
+        "MY" ||
+      requestedMarket ===
+        "MALAYSIA"
+    ) {
+
+      const result =
+        await scanMarket(
+          MY_SYMBOLS,
+          "MY"
+        );
+
+      return res
+        .status(200)
+        .json(result);
+    }
+
+    // -------------------------
+    // BOTH
+    // -------------------------
+
+    const [
+      us,
+      my
+    ] =
+      await Promise.all([
+        scanMarket(
+          US_SYMBOLS,
+          "US"
+        ),
+
+        scanMarket(
+          MY_SYMBOLS,
+          "MY"
+        )
+      ]);
+
+    return res
+      .status(200)
+      .json({
+
+        ok: true,
+
+        market:
+          "ALL",
+
+        generatedAt:
+          new Date()
+            .toISOString(),
+
+        US: us,
+
+        MY: my,
+
+        combinedFocusList:
+          [
+            ...(us.focusList || []),
+            ...(my.focusList || [])
+          ]
+            .sort(
+              (a, b) =>
+                b.focusScore -
+                a.focusScore
+            )
+            .slice(0, 20)
+      });
 
   } catch (error) {
-    console.error("RADAR_ERROR:", error);
 
-    return res.status(500).json({
-      ok: false,
-      error: "RADAR_FUNCTION_FAILED",
-      message: error?.message || "Unknown server error"
-    });
+    console.error(
+      "RADAR_ERROR:",
+      error
+    );
+
+    return res
+      .status(500)
+      .json({
+
+        ok: false,
+
+        error:
+          "RADAR_FUNCTION_FAILED",
+
+        message:
+          error?.message ||
+          "Unknown server error"
+      });
   }
 }
