@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>US + MY Stock Radar</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
+</head>
+<body>
+<header><div><h1>Stock Radar</h1><span id="stamp">Daily market focus</span></div><button id="refresh">Refresh</button></header>
+<main>
+<section class="hero">
+ <div class="card"><small>US MARKET</small><h2 id="usMood">—</h2><p>Sector momentum</p></div>
+ <div class="card"><small>BURSA MALAYSIA</small><h2 id="myMood">—</h2><p>Sector momentum</p></div>
+ <div class="card"><small>SETUP</small><h2>Entry → TP → SL</h2><p>Levels lock per snapshot</p></div>
+</section>
+<section class="grid2">
+ <div class="panel"><div class="title"><h2>US sectors</h2><span>ranked</span></div><div id="usSectors"></div></div>
+ <div class="panel"><div class="title"><h2>Malaysia sectors</h2><span>ranked</span></div><div id="mySectors"></div></div>
+</section>
+<section class="panel">
+ <div class="title"><h2>Today's focus counters</h2><span>highest score first</span></div>
+ <div class="tabs"><button class="tab active" data-m="US">US</button><button class="tab" data-m="MY">Malaysia</button></div>
+ <div id="focus"></div>
+</section>
+<section class="panel detail">
+ <div class="title"><div><small id="dMarket">COUNTER</small><h2 id="dName">Select a counter</h2></div><span id="dShariah"></span></div>
+ <div class="metrics" id="tradeBox"></div>
+ <div class="chartwrap"><canvas id="chart"></canvas></div>
+ <div class="grid2">
+  <div><h3>Technical analysis</h3><div id="technical"></div></div>
+  <div><h3>Fundamental health</h3><div id="fundamental"></div></div>
+ </div>
+ <div class="docs"><h3>Documents & announcements</h3><div id="docs"></div></div>
+</section>
+</main>
+<footer>Research dashboard only. Verify prices, filings, announcements and Shariah status before acting.</footer>
+<script src="app.js"></script>
+</body></html>
