@@ -1,18 +1,7 @@
 // api/radar.js
 // US + Malaysia Stock Radar
+// Yahoo Finance
 // Sector Ranking + Counter Ranking + Focus List
-// Source: Yahoo Finance
-//
-// API:
-// /api/radar?market=US
-// /api/radar?market=MY
-// /api/radar
-//
-// Output:
-// - sectorRanking
-// - focusList
-// - candidates
-// - market status
 
 export default async function handler(req, res) {
   res.setHeader(
@@ -26,7 +15,7 @@ export default async function handler(req, res) {
   );
 
   // =========================================================
-  // SYMBOL LIST
+  // SYMBOLS
   // =========================================================
 
   const US_SYMBOLS = [
@@ -37,18 +26,42 @@ export default async function handler(req, res) {
     "UBER","ITUB","HDB","SOFI","GOOGL","STLA","DNN","BBD","HL","NFLX",
     "CPRT","VG","CLSK","PURR","VALE","OKLO","AVGO","ACHR","HOOD","NKE",
     "MSTR","HBAN","RIVN","MU","AMD","CDE","PBR","CRWV","RKT","MRVL",
-    "TENB","WMT","CAG","META","INFY","LUMN","CCL","CNH","AMC","CMCSA",
-    "VZ","OWL","MRNA","BTG","PLTR","IONQ","NCLH","CCC","USAR","SLS",
-    "SKHY","DELL","RGTI","CSCO","RKLB","GGB","MSFT","PINS","ERIC","LYG"
+    "TENB","WMT","CAG","META","LUMN","CCL","CNH","AMC","CMCSA","VZ",
+    "OWL","MRNA","BTG","PLTR","IONQ","NCLH","CCC","USAR","SLS","SKHY",
+    "DELL","RGTI","CSCO","RKLB","GGB","MSFT","PINS","ERIC","LYG","ORCL"
   ];
 
   const MY_SYMBOLS = [
-    "1023.KL","1155.KL","1295.KL","5819.KL","4863.KL",
-    "6012.KL","6947.KL","3042.KL","7089.KL","4677.KL",
-    "5183.KL","5681.KL","5347.KL","5398.KL","5211.KL",
-    "4197.KL","1961.KL","8869.KL","3816.KL","4707.KL",
-    "7084.KL","5225.KL","7153.KL","7113.KL","7086.KL",
-    "0166.KL","0097.KL","5285.KL","4065.KL","2445.KL"
+    "1023.KL",
+    "1155.KL",
+    "1295.KL",
+    "5819.KL",
+    "4863.KL",
+    "6012.KL",
+    "6947.KL",
+    "3042.KL",
+    "7089.KL",
+    "4677.KL",
+    "5183.KL",
+    "5681.KL",
+    "5347.KL",
+    "5398.KL",
+    "5211.KL",
+    "4197.KL",
+    "1961.KL",
+    "8869.KL",
+    "3816.KL",
+    "4707.KL",
+    "7084.KL",
+    "5225.KL",
+    "7153.KL",
+    "7113.KL",
+    "7086.KL",
+    "0166.KL",
+    "0097.KL",
+    "5285.KL",
+    "4065.KL",
+    "2445.KL"
   ];
 
   // =========================================================
@@ -57,7 +70,10 @@ export default async function handler(req, res) {
 
   const SECTORS = {
 
-    // Technology
+    // -------------------------
+    // US TECHNOLOGY
+    // -------------------------
+
     AAPL: "Technology",
     MSFT: "Technology",
     NVDA: "Technology",
@@ -80,6 +96,7 @@ export default async function handler(req, res) {
     NOK: "Technology",
     ERIC: "Technology",
     SKHY: "Technology",
+    ONDS: "Technology",
 
     // Semiconductors
     IONQ: "Semiconductors",
@@ -104,11 +121,15 @@ export default async function handler(req, res) {
     CCL: "Consumer",
     NCLH: "Consumer",
     AMC: "Consumer",
+    KVUE: "Consumer",
+    ABEV: "Consumer",
 
     // Automotive
     TSLA: "Automotive",
     RIVN: "Automotive",
     STLA: "Automotive",
+    F: "Automotive",
+    NIO: "Automotive",
 
     // Financial
     BAC: "Financial",
@@ -121,6 +142,7 @@ export default async function handler(req, res) {
     HBAN: "Financial",
     AGNC: "Financial",
     OWL: "Financial",
+    LYG: "Financial",
 
     // Energy
     PLUG: "Energy",
@@ -133,12 +155,13 @@ export default async function handler(req, res) {
     PBR: "Energy",
     VALE: "Energy",
     CNH: "Energy",
+    VG: "Energy",
 
     // Nuclear
     SMR: "Nuclear",
     OKLO: "Nuclear",
 
-    // Uranium / Mining
+    // Mining
     DNN: "Mining",
     HL: "Mining",
     CDE: "Mining",
@@ -163,35 +186,29 @@ export default async function handler(req, res) {
     OPEN: "Real Estate",
     RKT: "Real Estate",
 
-    // Internet / Software
+    // Internet
     UBER: "Internet",
     GRAB: "Internet",
 
-    // Other
+    // Telecom
     LUMN: "Telecom",
-    KVUE: "Consumer",
-    AB​​EV: "Consumer",
-    LYG: "Financial",
-    VG: "Energy",
+
+    // Crypto
     PURR: "Crypto",
     MSTR: "Crypto",
     BMNR: "Crypto",
     CIFR: "Crypto",
-    MARA: "Crypto",
-    RGTI: "Technology",
-    ONDS: "Technology",
-    KEEL: "Infrastructure",
-    PATH: "Technology",
-    PINS: "Communication",
-    CPRT: "Industrial",
-    F: "Automotive",
-    ABEV: "Consumer",
-    NIO: "Automotive",
-    NIO: "Automotive",
-    VALE: "Mining",
-    PBR: "Energy",
 
-    // Malaysia
+    // Infrastructure
+    KEEL: "Infrastructure",
+
+    // Industrial
+    CPRT: "Industrial",
+
+    // -------------------------
+    // MALAYSIA
+    // -------------------------
+
     "1023.KL": "Financial",
     "1155.KL": "Financial",
     "1295.KL": "Financial",
@@ -228,16 +245,18 @@ export default async function handler(req, res) {
   // HELPERS
   // =========================================================
 
-  const sleep = ms =>
-    new Promise(resolve => setTimeout(resolve, ms));
-
-  function number(v) {
-    const n = Number(v);
+  function number(value) {
+    const n = Number(value);
     return Number.isFinite(n) ? n : 0;
   }
 
-  function clamp(v, min, max) {
-    return Math.max(min, Math.min(max, v));
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function round(value, decimals = 2) {
+    const factor = 10 ** decimals;
+    return Math.round(number(value) * factor) / factor;
   }
 
   function sectorOf(symbol) {
@@ -248,13 +267,15 @@ export default async function handler(req, res) {
     price = number(price);
     previousClose = number(previousClose);
 
-    if (!price || !previousClose) return 0;
+    if (!price || !previousClose) {
+      return 0;
+    }
 
     return ((price - previousClose) / previousClose) * 100;
   }
 
   // =========================================================
-  // YAHOO
+  // YAHOO FETCH
   // =========================================================
 
   async function getYahoo(symbol) {
@@ -263,26 +284,22 @@ export default async function handler(req, res) {
       encodeURIComponent(symbol) +
       "?range=5d&interval=1d&events=history";
 
+    const controller = new AbortController();
+
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 7000);
+
     try {
-      const controller = new AbortController();
-
-      const timeout = setTimeout(
-        () => controller.abort(),
-        7000
-      );
-
       const response = await fetch(url, {
         method: "GET",
-
         headers: {
-          "User-Agent": "Mozilla/5.0",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           "Accept": "application/json"
         },
-
         signal: controller.signal
       });
-
-      clearTimeout(timeout);
 
       if (!response.ok) {
         return null;
@@ -341,6 +358,10 @@ export default async function handler(req, res) {
           volumes[volumes.length - 1];
       }
 
+      if (!price) {
+        return null;
+      }
+
       const change =
         changePercent(
           price,
@@ -362,11 +383,13 @@ export default async function handler(req, res) {
           meta.shortName ||
           symbol,
 
-        price,
+        price: round(price),
 
-        previousClose,
+        previousClose:
+          round(previousClose),
 
-        change,
+        change:
+          round(change),
 
         volume,
 
@@ -380,19 +403,22 @@ export default async function handler(req, res) {
           meta.exchangeName || null,
 
         marketState:
-          meta.marketState || "CLOSED",
+          meta.marketState ||
+          "CLOSED",
 
         marketTime,
 
         sector:
           sectorOf(symbol),
 
-        available:
-          price > 0
+        available: true
       };
 
-    } catch {
+    } catch (error) {
       return null;
+
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -406,7 +432,8 @@ export default async function handler(req, res) {
   ) {
     const candidates = [];
 
-    const BATCH_SIZE = 5;
+    // Smaller batch avoids Yahoo throttling
+    const BATCH_SIZE = 4;
 
     for (
       let i = 0;
@@ -432,13 +459,6 @@ export default async function handler(req, res) {
         if (item) {
           candidates.push(item);
         }
-      }
-
-      if (
-        i + BATCH_SIZE <
-        symbols.length
-      ) {
-        await sleep(100);
       }
     }
 
@@ -484,8 +504,7 @@ export default async function handler(req, res) {
         maxVolume > 0
           ? clamp(
               (item.volume /
-                maxVolume) *
-                30,
+                maxVolume) * 30,
               0,
               30
             )
@@ -527,9 +546,7 @@ export default async function handler(req, res) {
             : "NEUTRAL";
 
       item.movement =
-        Math.round(
-          movement * 100
-        ) / 100;
+        round(movement);
     }
 
     // =======================================================
@@ -551,13 +568,11 @@ export default async function handler(req, res) {
     }
 
     // =======================================================
-    // SECTOR SCORE
+    // SECTOR RANKING
     // =======================================================
 
     const sectorRanking =
-      Object.entries(
-        sectorMap
-      )
+      Object.entries(sectorMap)
         .map(
           ([sector, stocks]) => {
 
@@ -597,10 +612,11 @@ export default async function handler(req, res) {
 
             const breadth =
               total
-                ? ((bullish -
-                    bearish) /
-                    total) *
-                  100
+                ? (
+                    (bullish -
+                      bearish) /
+                    total
+                  ) * 100
                 : 0;
 
             const avgMomentum =
@@ -648,9 +664,9 @@ export default async function handler(req, res) {
                 ),
 
               averageChange:
-                Math.round(
-                  avgChange * 100
-                ) / 100,
+                round(
+                  avgChange
+                ),
 
               breadth:
                 Math.round(
@@ -710,15 +726,22 @@ export default async function handler(req, res) {
     // FOCUS LIST
     // =======================================================
 
-    const sectorRankMap =
-      {};
+    const sectorRankMap = {};
+
+    const sectorScoreMap = {};
 
     sectorRanking.forEach(
       sector => {
+
         sectorRankMap[
           sector.sector
         ] =
           sector.rank;
+
+        sectorScoreMap[
+          sector.sector
+        ] =
+          sector.score;
       }
     );
 
@@ -735,11 +758,9 @@ export default async function handler(req, res) {
             ] || 999;
 
           const sectorScore =
-            sectorRanking.find(
-              s =>
-                s.sector ===
-                x.sector
-            )?.score || 0;
+            sectorScoreMap[
+              x.sector
+            ] || 0;
 
           const focusScore =
             clamp(
@@ -748,8 +769,7 @@ export default async function handler(req, res) {
               Math.max(
                 sectorRank - 5,
                 0
-              ) *
-                2,
+              ) * 2,
               0,
               100
             );
@@ -784,7 +804,7 @@ export default async function handler(req, res) {
         .slice(0, 15);
 
     // =======================================================
-    // GENERAL CANDIDATE SORT
+    // GENERAL SORT
     // =======================================================
 
     candidates.sort(
@@ -812,7 +832,7 @@ export default async function handler(req, res) {
     );
 
     // =======================================================
-    // MARKET STATE
+    // MARKET STATUS
     // =======================================================
 
     const liveCount =
@@ -869,9 +889,9 @@ export default async function handler(req, res) {
         "ALL"
       ).toUpperCase();
 
-    // -------------------------
+    // =======================================================
     // US
-    // -------------------------
+    // =======================================================
 
     if (
       requestedMarket ===
@@ -889,15 +909,13 @@ export default async function handler(req, res) {
         .json(result);
     }
 
-    // -------------------------
+    // =======================================================
     // MALAYSIA
-    // -------------------------
+    // =======================================================
 
     if (
-      requestedMarket ===
-        "MY" ||
-      requestedMarket ===
-        "MALAYSIA"
+      requestedMarket === "MY" ||
+      requestedMarket === "MALAYSIA"
     ) {
 
       const result =
@@ -911,75 +929,63 @@ export default async function handler(req, res) {
         .json(result);
     }
 
-    // -------------------------
-    // BOTH
-    // -------------------------
+    // =======================================================
+    // ALL
+    // =======================================================
 
-    const [
-      us,
-      my
-    ] =
-      await Promise.all([
+    if (
+      requestedMarket === "ALL"
+    ) {
+
+      const [
+        us,
+        my
+      ] = await Promise.all([
         scanMarket(
           US_SYMBOLS,
           "US"
         ),
-
         scanMarket(
           MY_SYMBOLS,
           "MY"
         )
       ]);
 
+      return res
+        .status(200)
+        .json({
+          ok: true,
+          market: "ALL",
+          source: "yahoo",
+          US: us,
+          MY: my
+        });
+    }
+
     return res
-      .status(200)
+      .status(400)
       .json({
-
-        ok: true,
-
-        market:
-          "ALL",
-
-        generatedAt:
-          new Date()
-            .toISOString(),
-
-        US: us,
-
-        MY: my,
-
-        combinedFocusList:
-          [
-            ...(us.focusList || []),
-            ...(my.focusList || [])
-          ]
-            .sort(
-              (a, b) =>
-                b.focusScore -
-                a.focusScore
-            )
-            .slice(0, 20)
+        ok: false,
+        error:
+          "Invalid market. Use US, MY or ALL."
       });
 
   } catch (error) {
 
     console.error(
-      "RADAR_ERROR:",
+      "RADAR ERROR:",
       error
     );
 
     return res
       .status(500)
       .json({
-
         ok: false,
-
         error:
-          "RADAR_FUNCTION_FAILED",
-
+          "Radar serverless function crashed",
         message:
           error?.message ||
-          "Unknown server error"
+          String(error)
       });
   }
 }
