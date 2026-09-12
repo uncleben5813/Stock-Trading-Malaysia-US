@@ -1,40 +1,103 @@
-function yahoo(symbol, range="3mo", interval="1d"){
-  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&events=div%2Csplits`;
+function yahooUrl(symbol, range = "6mo", interval = "1d") {
+  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol
+  )}?range=${range}&interval=${interval}&events=div%2Csplits`;
 }
-function td(symbol, interval="1day", outputsize=200){
-  const key = process.env.TWELVE_DATA_API_KEY;
-  if(!key) return null;
-  const clean = symbol.endsWith(".KL") ? symbol.replace(".KL","") : symbol;
-  const s = symbol.endsWith(".KL") ? `${clean}:KLSE` : clean;
-  return `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(s)}&interval=${interval}&outputsize=${outputsize}&apikey=${key}`;
-}
-async function getJson(url){
-  const r=await fetch(url,{headers:{"User-Agent":"USMYStockRadar/1.0"}});
-  if(!r.ok) throw new Error("HTTP "+r.status);
+
+async function getJson(url) {
+  const r = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0"
+    }
+  });
+
+  if (!r.ok) {
+    throw new Error(`Yahoo HTTP ${r.status}`);
+  }
+
   return r.json();
 }
-function normalizeYahoo(j){
-  const q=j.chart?.result?.[0]; if(!q) throw new Error("No Yahoo data");
-  const ts=q.timestamp||[], c=q.indicators?.quote?.[0]||{};
-  return ts.map((t,i)=>({time:t*1000,open:c.open?.[i],high:c.high?.[i],low:c.low?.[i],close:c.close?.[i],volume:c.volume?.[i]}))
-    .filter(x=>x.close!=null);
+
+function normalizeYahoo(j) {
+  const result = j?.chart?.result?.[0];
+
+  if (!result) {
+    throw new Error("Yahoo returned no data");
+  }
+
+  const timestamps = result.timestamp || [];
+  const quote = result.indicators?.quote?.[0] || {};
+
+  return timestamps
+    .map((t, i) => ({
+      time: t * 1000,
+      open: quote.open?.[i],
+      high: quote.high?.[i],
+      low: quote.low?.[i],
+      close: quote.close?.[i],
+      volume: quote.volume?.[i] || 0
+    }))
+    .filter(
+      x =>
+        Number.isFinite(x.open) &&
+        Number.isFinite(x.high) &&
+        Number.isFinite(x.low) &&
+        Number.isFinite(x.close)
+    );
 }
-function normalizeTD(j){
-  return (j.values||[]).slice().reverse().map(x=>({time:new Date(x.datetime).getTime(),open:+x.open,high:+x.high,low:+x.low,close:+x.close,volume:+x.volume||0}));
-}
-export default async function handler(req,res){
-  const symbol=req.query.symbol;
-  const range=req.query.range||"6mo";
-  const interval=req.query.interval||"1d";
-  if(!symbol) return res.status(400).json({ok:false,error:"symbol required"});
-  try{
-    let candles;
-    const u=td(symbol, interval==="1d"?"1day":interval, 300);
-    if(u){
-      try{ candles=normalizeTD(await getJson(u)); }catch(e){}
+
+export default async function handler(req, res) {
+  const symbol = String(req.query.symbol || "").trim();
+
+  const range = String(req.query.range || "6mo");
+  const interval = String(req.query.interval || "1d");
+
+  if (!symbol) {
+    return res.status(400).json({
+      ok: false,
+      error: "symbol required"
+    });
+  }
+
+  try {
+    const url = yahooUrl(symbol, range, interval);
+    const data = await getJson(url);
+
+    const candles = normalizeYahoo(data);
+
+    if (!candles.length) {
+      return res.status(404).json({
+        ok: false,
+        symbol,
+        error: "No market data returned",
+        candles: []
+      });
     }
-    if(!candles?.length) candles=normalizeYahoo(symbol,range,interval);
-    res.setHeader("Cache-Control","s-maxage=60, stale-while-revalidate=300");
-    return res.status(200).json({ok:true,symbol,candles,source:u?"twelvedata/yahoo":"yahoo"});
-  }catch(e){ return res.status(500).json({ok:false,error:e.message}); }
+
+    const meta = data?.chart?.result?.[0]?.meta || {};
+
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=60, stale-while-revalidate=300"
+    );
+
+    return res.status(200).json({
+      ok: true,
+      symbol,
+      source: "Yahoo Finance",
+      currency: meta.currency || null,
+      exchange: meta.exchangeName || null,
+      price: meta.regularMarketPrice || candles.at(-1)?.close || null,
+      candles
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      symbol,
+      source: "Yahoo Finance",
+      error: error.message,
+      candles: []
+    });
+  }
 }
